@@ -2,16 +2,19 @@ package main
 
 import (
 	"fmt"
-	"strings"
 )
 
 var (
 	userQuery = "Linux operative system"
 	documents = []string{
-		"Linux is an operative system low on resources",
-		"Linux From Scratch Drops SysVinit Support. Linux . Linux . Linux .",
-		"IronClaw: a Rust-based clawd that runs tools in isolated WASM sandboxes",
-		"Major European payment processor can't send email to Google Workspace users",
+		"cat cat cat dog mouse mouse mouse mouse",
+		"cat dog dog mouse mouse mouse mouse mouse",
+		"cat cat dog dog dog",
+		// "eating eats eaten",
+		// "Linux is an operative system low on resources",
+		// "Linux From Scratch Drops SysVinit Support. Linux . Linux . Linux .",
+		// "IronClaw: a Rust-based clawd that runs tools in isolated WASM sandboxes",
+		// "Major European payment processor can't send email to Google Workspace users",
 	}
 )
 
@@ -21,19 +24,17 @@ func main() {
 		Blobs: []*Blob{},
 	}
 
-	// lets suppose we've already this in db, locally or whatever
+	// lets suppose we've already this in db, redis, locally or whatever
 	for _, strblob := range documents {
-		splitted := strings.Fields(strblob)
-
-		blob := &Blob{
-			blobFile:   splitted,
-			TotalWords: len(splitted),
-		}
+		blob := CreateBlob(strblob)
 		blobList.AppendBlob(blob)
 	}
 
-	for i, blob := range blobList.Blobs {
-		score := blobList.tf_idf("Linux", blob)
-		fmt.Printf("%d - Score: %f\nDocument: %s\n\n", i+1, score, blob.blobFile)
+	query := CreateBlob("mouse")
+	ranking := blobList.tf_idf(query)
+
+	fmt.Println("\nRanking in order:")
+	for i, b := range ranking {
+		fmt.Printf("<%d>\n - %s \n - %f out of 1.0\n", i, b.blobFile, b.Score)
 	}
 }
