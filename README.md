@@ -4,12 +4,16 @@ search engine. why not.
 ### server
 - redis
 - elasticSearch
-- search metaphone alternative
+- search metaphone alternative (handle spelling mistakes)
 - testing
+- have a precomputed pagerank at all times
 
 - core
     - tf-idf algo
     - stemming? maybe a library for it
+        - [go-porterstemmer](https://github.com/reiver/go-porterstemmer/) (nvm, tests failing)
+        - [stemmer](https://github.com/caneroj1/stemmer)
+
     - make tokenaizer? to group up words at the ratee they appear in the blob
 
 - server protocol + implementation
@@ -24,3 +28,4 @@ search engine. why not.
 
 ### extras (if bored)
 - [just](https://github.com/casey/just)
+- improve tf by using different schema/ignoring stopwords
