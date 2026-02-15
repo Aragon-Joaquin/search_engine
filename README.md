@@ -1,0 +1,26 @@
+search engine. why not.
+
+
+### server
+- redis
+- elasticSearch
+- search metaphone alternative
+- testing
+
+- core
+    - tf-idf algo
+    - stemming? maybe a library for it
+    - make tokenaizer? to group up words at the ratee they appear in the blob
+
+- server protocol + implementation
+    - [wish](https://github.com/charmbracelet/wish)? for ssh server?
+    - http? (booooring)
+    - [zeromq](https://github.com/zeromq/goczmq)? (i'll probably die due to many complications)
+
+### client
+- [bubbletea](https://github.com/charmbracelet/bubbletea) as tui
+- 
+
+
+### extras (if bored)
+- [just](https://github.com/casey/just)
