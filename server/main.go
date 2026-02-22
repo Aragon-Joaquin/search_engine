@@ -2,39 +2,32 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"runtime"
+	"search_engine/blobs"
+	"time"
 )
 
 var (
-	userQuery = "Linux operative system"
-	documents = []string{
-		"cat cat cat dog mouse mouse mouse mouse",
-		"cat dog dog mouse mouse mouse mouse mouse",
-		"cat cat dog dog dog",
-		// "eating eats eaten",
-		// "Linux is an operative system low on resources",
-		// "Linux From Scratch Drops SysVinit Support. Linux . Linux . Linux .",
-		// "IronClaw: a Rust-based clawd that runs tools in isolated WASM sandboxes",
-		// "Major European payment processor can't send email to Google Workspace users",
-	}
+	userQuery     = "Linux operative system"
+	systemThreads = runtime.NumCPU()
 )
 
-// WARN: first initial test - have lower expectations. might be considerable improved later on
 func main() {
-	blobList := BlobList{
-		Blobs: []*Blob{},
-	}
+	start := time.Now()
 
-	// lets suppose we've already this in db, redis, locally or whatever
-	for _, strblob := range documents {
-		blob := CreateBlob(strblob)
-		blobList.AppendBlob(blob)
-	}
+	blobList := blobs.LoadBlobsFromFolder()
+	log.Println("LOADING AND PARSE BLOBS", "time:", time.Since(start))
 
-	query := CreateBlob("mouse")
-	ranking := blobList.tf_idf(query)
+	query := blobs.CreateBlob()
+	query.StemWords("saturn")
+
+	ranking := blobList.Calculate_tf_idf(query)
 
 	fmt.Println("\nRanking in order:")
 	for i, b := range ranking {
-		fmt.Printf("<%d>\n - %s \n - %f out of 1.0\n", i, b.blobFile, b.Score)
+		fmt.Printf("<%d>\n - Title: %s\n - Description: %s\n - URL: %s\n - DateTime: %v\n [%f out of 1.0]\n\n", i, b.Headers.Title, b.Headers.Description, b.Headers.URL, b.Headers.Datetime, b.Score)
 	}
+
+	log.Println("TOTAL TIME", "time:", time.Since(start))
 }

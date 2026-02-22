@@ -1,4 +1,4 @@
-package main
+package blobs
 
 import (
 	"cmp"
@@ -37,7 +37,7 @@ func (bl *BlobList) InverseDocumentFrequency(word string) float64 {
 	return math.Log(count)
 }
 
-func (bl *BlobList) tf_idf(query *Blob) []*Blob {
+func (bl *BlobList) Calculate_tf_idf(query *Blob) []*Blob {
 	for _, blob := range bl.Blobs {
 		// if the query only has 1 word
 		// if query.TotalWords == 1 {

@@ -29,3 +29,4 @@ search engine. why not.
 ### extras (if bored)
 - [just](https://github.com/casey/just)
 - improve tf by using different schema/ignoring stopwords
+-  only supports posix due to line feed vs resource nurse manual implementation

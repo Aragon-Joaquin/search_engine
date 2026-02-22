@@ -1,34 +1,48 @@
-package main
+package blobs
 
 import (
-	"fmt"
 	"math"
 	"search_engine/stemmer"
 	"strings"
+	"time"
+	"unicode"
 )
 
 type Blob struct {
-	TotalWords int     // len(blobFile)
-	Score      float64 // this is calculated at the end, represents how exact was the match made with the query from 0 to 1
+	// Location string
+	Score float64 // this is calculated at the end, represents how exact was the match made with the query from 0 to 1
 
 	// document
 	blobFile []string // string of words strimmed
 
 	termSpace map[string]int // map of the frecuency of each word
 	magnitude float64        // magnitude based on word frecuency
+
+	Headers struct {
+		Title       string
+		Description string
+		Datetime    time.Time
+		URL         string
+	}
 }
 
-func CreateBlob(content string) *Blob {
-	parsed := strings.Fields(strings.TrimSpace(content))
+func CreateBlob() *Blob {
+	return &Blob{
+		blobFile:  []string{},
+		termSpace: map[string]int{},
+		magnitude: -1,
+		Score:     -1,
+	}
+}
+
+func (b *Blob) StemWords(content string) {
+	parsed := strings.FieldsFunc(content, func(r rune) bool {
+		return unicode.IsPunct(r) || unicode.IsSpace(r) || unicode.IsSymbol(r)
+	})
+
 	stemmer := stemmer.StemMultiple(parsed)
 
-	return &Blob{
-		TotalWords: len(stemmer),
-		blobFile:   stemmer,
-		termSpace:  map[string]int{},
-		magnitude:  -1,
-		Score:      -1,
-	}
+	b.blobFile = stemmer
 }
 
 func (b *Blob) GetWordCount(word string) int {
@@ -85,7 +99,7 @@ func (b *Blob) GetTermSpace() map[string]int {
 
 // stands for tf - total times a word appears in blob
 func (b *Blob) TermFrecuency(word string) float64 {
-	return float64(b.GetWordCount(word)) / float64(b.TotalWords)
+	return float64(b.GetWordCount(word)) / float64(len(b.blobFile))
 }
 
 //	Q 	* 	V
@@ -96,11 +110,9 @@ func (b *Blob) CalculateDotProduct(query *Blob) float64 {
 	var dotProduct int = 0
 	for key, value := range query.GetTermSpace() {
 		val := b.GetWordCount(key)
-		fmt.Printf("\n----- VAL (%d) * VALUE (%d) ---\n", val, value)
 		dotProduct += val * value
 
 	}
 
-	fmt.Printf("float64(dotProduct): %f\n query.GetVectorMagnitute: %f\n b.GetVectorMagnitute(): %f\n", float64(dotProduct), query.GetVectorMagnitute(), b.GetVectorMagnitute())
 	return float64(dotProduct) / (query.GetVectorMagnitute() * b.GetVectorMagnitute())
 }
