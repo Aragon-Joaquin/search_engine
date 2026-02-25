@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 var (
@@ -59,6 +61,7 @@ func LoadBlobsFromFolder() *BlobList {
 
 			blobFile, err2 := ReadBlobFile(byteFile)
 			if err2 != nil {
+				log.Println("read failed: ", file.Name(), "REASON:", err2)
 				return
 			}
 
@@ -72,10 +75,21 @@ func LoadBlobsFromFolder() *BlobList {
 	return totalBlobs
 }
 
-func ReadBlobFile(f *os.File) (*Blob, error) {
-	fileContent := []byte{}
+const (
+	MAX_CAPACITY = 4096
+)
 
+func ReadBlobFile(f *os.File) (*Blob, error) {
 	b := CreateBlob()
+
+	// set the filename as uuid
+	id, err := uuid.Parse(filepath.Base(f.Name()))
+	if err != nil {
+		return nil, err
+	}
+
+	b.UUID = id
+	fileContent := make([]byte, MAX_CAPACITY)
 
 	var status readingStatus = readingHeader
 	for {
@@ -105,12 +119,12 @@ func ReadBlobFile(f *os.File) (*Blob, error) {
 					return nil, fmt.Errorf("header length should be 4, received %d", len(header))
 				}
 
-				b.Headers.Title = header[HeaderTitle]
-				b.Headers.Description = header[HeaderDescription]
-				b.Headers.URL = header[HeaderURL]
+				b.Title = header[HeaderTitle]
+				b.Description = header[HeaderDescription]
+				b.URL = header[HeaderURL]
 
 				if dateTime, err := time.Parse(DateLayout, header[HeaderDatetime]); err == nil {
-					b.Headers.Datetime = dateTime
+					b.Datetime = dateTime
 				}
 
 				// if we read some bytes from the body accidentally
@@ -122,7 +136,6 @@ func ReadBlobFile(f *os.File) (*Blob, error) {
 				break loop
 			}
 		}
-		fmt.Println("breaked loop")
 	}
 	b.StemWords(string(fileContent))
 	return b, nil

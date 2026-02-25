@@ -4,18 +4,25 @@ import (
 	"cmp"
 	"math"
 	"slices"
+	"sync"
 )
 
 type BlobList struct {
 	Blobs []*Blob
+
+	rwMu sync.RWMutex
+}
+
+func CreateBlobList() *BlobList {
+	return &BlobList{
+		Blobs: []*Blob{},
+		rwMu:  sync.RWMutex{},
+	}
 }
 
 func (bl *BlobList) AppendBlob(blob *Blob) {
-	if bl.Blobs == nil {
-		bl.Blobs = []*Blob{blob}
-		return
-	}
-
+	bl.rwMu.Lock()
+	defer bl.rwMu.Unlock()
 	bl.Blobs = append(bl.Blobs, blob)
 }
 

@@ -1,38 +1,58 @@
 package blobs
 
 import (
+	"encoding/json"
+	"fmt"
 	"math"
 	"search_engine/stemmer"
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/google/uuid"
 )
 
+type blobHeaders struct {
+	Title       string    `redis:"title"`
+	Description string    `redis:"description"`
+	Datetime    time.Time `redis:"datetime"`
+	URL         string    `redis:"url"`
+}
+
 type Blob struct {
+	// count all the ZScore of redis and stores it in this field
+	Length int `redis:"length"`
+
+	// name of the file in the path and unique identifier
+	UUID uuid.UUID `redis:"uuid"`
+
 	// Location string
-	Score float64 // this is calculated at the end, represents how exact was the match made with the query from 0 to 1
+	Score float64
+	// this is calculated at the end, represents how exact was the match made with the query from 0 to 1
 
-	// document
-	blobFile []string // string of words strimmed
-
-	termSpace map[string]int // map of the frecuency of each word
+	TermSpace map[string]int // map of the frecuency of each word
 	magnitude float64        // magnitude based on word frecuency
 
-	Headers struct {
-		Title       string
-		Description string
-		Datetime    time.Time
-		URL         string
-	}
+	blobHeaders `redis:"headers"`
 }
 
 func CreateBlob() *Blob {
 	return &Blob{
-		blobFile:  []string{},
-		termSpace: map[string]int{},
-		magnitude: -1,
+		TermSpace: map[string]int{},
 		Score:     -1,
+
+		magnitude:   -1,
+		blobHeaders: blobHeaders{},
 	}
+}
+
+// NOTE: no idea if im going to use this
+func (b *Blob) MarshalToBinary() ([]byte, error) {
+	return json.Marshal(b)
+}
+
+func (b *Blob) GetUUID() string {
+	return b.UUID.String()
 }
 
 func (b *Blob) StemWords(content string) {
@@ -42,28 +62,41 @@ func (b *Blob) StemWords(content string) {
 
 	stemmer := stemmer.StemMultiple(parsed)
 
-	b.blobFile = stemmer
+	b.Length = len(stemmer)
+	b.TermSpace = b.SetTermSpace(stemmer)
 }
 
 func (b *Blob) GetWordCount(word string) int {
-	if val, ok := b.termSpace[word]; ok {
+	b.initTermSpace() // uhhh
+	if val, ok := b.TermSpace[word]; ok {
 		return val
 	}
-
-	var count int = 0
-	for _, w := range b.blobFile {
-		// maybe
-		val, _ := b.termSpace[w]
-		b.termSpace[w] = val + 1
-
-		if w == word {
-			count++
-		}
-	}
-
-	return count
+	return 0
 }
 
+func (b *Blob) initTermSpace() {
+	if b.TermSpace == nil {
+		b.TermSpace = map[string]int{}
+	}
+}
+
+func (b *Blob) SetTermSpace(stemmedContent []string) map[string]int {
+	b.initTermSpace()
+
+	for _, w := range stemmedContent {
+		val, _ := b.TermSpace[w]
+		b.TermSpace[w] = val + 1
+	}
+
+	return b.TermSpace
+}
+
+func (b *Blob) AddToTermSpace(word string, score int) {
+	b.initTermSpace()
+	b.TermSpace[word] = score
+}
+
+// NOTE: math below
 // calculate the magnitude of the vector using the pythagorean theorem
 // sqrt(a² + b² + c² ... + n²)
 func (b *Blob) GetVectorMagnitute() float64 {
@@ -72,34 +105,21 @@ func (b *Blob) GetVectorMagnitute() float64 {
 	}
 
 	var magnitude int = 0
-
-	termSpace := b.GetTermSpace()
-	for _, val := range termSpace {
+	for word, val := range b.TermSpace {
+		fmt.Println("redoes the count. WORD: ", word, ", VAL: ", val)
 		magnitude += val * val
 	}
 
 	finalMag := math.Sqrt(float64(magnitude))
 	b.magnitude = finalMag
+	fmt.Println("magnitude: ", b.magnitude)
 
 	return finalMag
 }
 
-func (b *Blob) GetTermSpace() map[string]int {
-	if len(b.termSpace) > 0 {
-		return b.termSpace
-	}
-
-	for _, w := range b.blobFile {
-		val, _ := b.termSpace[w]
-		b.termSpace[w] = val + 1
-	}
-
-	return b.termSpace
-}
-
 // stands for tf - total times a word appears in blob
 func (b *Blob) TermFrecuency(word string) float64 {
-	return float64(b.GetWordCount(word)) / float64(len(b.blobFile))
+	return float64(b.GetWordCount(word)) / float64(b.Length)
 }
 
 //	Q 	* 	V
@@ -108,10 +128,9 @@ func (b *Blob) TermFrecuency(word string) float64 {
 
 func (b *Blob) CalculateDotProduct(query *Blob) float64 {
 	var dotProduct int = 0
-	for key, value := range query.GetTermSpace() {
-		val := b.GetWordCount(key)
+	for key, value := range b.TermSpace {
+		val := query.GetWordCount(key)
 		dotProduct += val * value
-
 	}
 
 	return float64(dotProduct) / (query.GetVectorMagnitute() * b.GetVectorMagnitute())
