@@ -2,19 +2,29 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
-	"fmt"
 	"log"
+	"os"
+	"os/signal"
 	"runtime"
 	"search_engine/blobs"
+	"search_engine/utils"
 	"sync"
+	"syscall"
 	"time"
+
+	"github.com/charmbracelet/ssh"
 )
 
 var (
 	userQuery     = "Linux operative system"
 	systemThreads = runtime.NumCPU()
 	maxTimeout    = time.Second * 3
+
+	HOST         = utils.GetEnv(utils.ENV_HOST)
+	PORT         = utils.GetEnv(utils.ENV_PORT)
+	KEYHOST_PATH = utils.GetEnv(utils.ENV_KEYHOST)
 
 	start time.Time
 )
@@ -24,6 +34,14 @@ func init() {
 }
 
 func main() {
+	if HOST == "" || PORT == "" {
+		panic("host and/or port are not defined in the .env")
+	}
+
+	if KEYHOST_PATH == "" {
+		panic("keyhost path is not defined. the default should be .ssh/id_ed25519")
+	}
+
 	// loads all blobs again into the redisDB
 	flagLoadBlobs := flag.Bool("l", false, "requires a bool")
 	flag.Parse()
@@ -35,24 +53,46 @@ func main() {
 		return
 	}
 
-	// user query
-	query := blobs.CreateBlob()
-	query.StemWords("saturn")
-
-	ctx := context.Background()
-	bList, err := DBRedis.GetAllZBlobs(ctx)
+	// NOTE: else, we boot up the ssh server
+	s, err := initServer()
 	if err != nil {
 		panic(err)
 	}
 
-	ranking := bList.Calculate_tf_idf(query)
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	log.Println("Starting SSH server", "host", HOST, "port", PORT)
 
-	fmt.Println("\nRanking in order:")
-	for i, b := range ranking {
-		fmt.Printf("<%d>\n - Title: %s\n - Description: %s\n - URL: %s\n - DateTime: %v\n [%f out of 1.0]\n\n", i, b.Title, b.Description, b.URL, b.Datetime, b.Score)
-	}
+	go func() {
+		if err = s.ListenAndServe(); err != nil && !errors.Is(err, ssh.ErrServerClosed) {
+			log.Fatalln("Could not start server", "error", err)
+			done <- nil
+		}
+	}()
 
-	log.Println("TOTAL TIME", "time:", time.Since(start))
+	/*
+		// user query
+		query := blobs.CreateBlob()
+		query.StemWords("saturn")
+
+		ctx := context.Background()
+		bList, err := DBRedis.GetAllZBlobs(ctx)
+		if err != nil {
+			panic(err)
+		}
+
+		ranking := bList.Calculate_tf_idf(query)
+
+		fmt.Println("\nRanking in order:")
+		for i, b := range ranking {
+			fmt.Printf("<%d>\n - Title: %s\n - Description: %s\n - URL: %s\n - DateTime: %v\n [%f out of 1.0]\n\n", i, b.Title, b.Description, b.URL, b.Datetime, b.Score)
+		}
+
+		log.Println("TOTAL TIME", "time:", time.Since(start))
+	*/
+
+	<-done
+	log.Println("Closing SSH Server...")
 }
 
 func loadBlobs() {

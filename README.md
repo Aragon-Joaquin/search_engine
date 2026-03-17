@@ -7,6 +7,8 @@ search engine. why not.
 - search metaphone alternative (handle spelling mistakes)
 - testing
 - have a precomputed pagerank at all times
+- make the crawler
+- ci
 
 - core
     - tf-idf algo

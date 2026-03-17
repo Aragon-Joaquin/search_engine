@@ -2,7 +2,6 @@ package blobs
 
 import (
 	"encoding/json"
-	"fmt"
 	"math"
 	"search_engine/stemmer"
 	"strings"
@@ -105,14 +104,12 @@ func (b *Blob) GetVectorMagnitute() float64 {
 	}
 
 	var magnitude int = 0
-	for word, val := range b.TermSpace {
-		fmt.Println("redoes the count. WORD: ", word, ", VAL: ", val)
+	for _, val := range b.TermSpace {
 		magnitude += val * val
 	}
 
 	finalMag := math.Sqrt(float64(magnitude))
 	b.magnitude = finalMag
-	fmt.Println("magnitude: ", b.magnitude)
 
 	return finalMag
 }

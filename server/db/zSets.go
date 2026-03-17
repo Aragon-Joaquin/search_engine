@@ -61,8 +61,6 @@ func (r *RedisClient) GetAllZBlobs(ctx context.Context) (*blobs.BlobList, error)
 
 	blist := blobs.CreateBlobList()
 	for _, title := range *names {
-		fmt.Printf("ITERATING_: %s\n", hashKey(title))
-
 		// todo: make go func
 		// pipe := r.Db.TxPipeline()
 
