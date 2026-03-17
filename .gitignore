@@ -1,2 +1,2 @@
 *.rdb
-.ssh/*
+server/ssh_keys/*
