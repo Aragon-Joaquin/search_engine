@@ -1,2 +1,3 @@
 *.rdb
 server/ssh_keys/*
+server/go.sum
