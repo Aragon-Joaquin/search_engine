@@ -4,3 +4,6 @@
 [submodule "third_party/third_party/stemmer"]
 	path = third_party/third_party/stemmer
 	url = https://github.com/caneroj1/stemmer
+[submodule "third_party/stemmer"]
+	path = third_party/stemmer
+	url = https://github.com/caneroj1/stemmer
