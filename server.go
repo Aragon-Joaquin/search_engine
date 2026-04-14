@@ -2,7 +2,8 @@ package main
 
 import (
 	"net"
-	"search_engine/tui"
+
+	"search_engine/internal/tui"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/wish/v2"

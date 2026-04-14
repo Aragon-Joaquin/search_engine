@@ -8,17 +8,17 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"search_engine/blobs"
-	"search_engine/utils"
 	"sync"
 	"syscall"
 	"time"
+
+	"search_engine/internal/blobs"
+	"search_engine/internal/utils"
 
 	"github.com/charmbracelet/ssh"
 )
 
 var (
-	userQuery     = "Linux operative system"
 	systemThreads = runtime.NumCPU()
 	maxTimeout    = time.Second * 3
 
@@ -69,27 +69,6 @@ func main() {
 			done <- nil
 		}
 	}()
-
-	/*
-		// user query
-		query := blobs.CreateBlob()
-		query.StemWords("saturn")
-
-		ctx := context.Background()
-		bList, err := DBRedis.GetAllZBlobs(ctx)
-		if err != nil {
-			panic(err)
-		}
-
-		ranking := bList.Calculate_tf_idf(query)
-
-		fmt.Println("\nRanking in order:")
-		for i, b := range ranking {
-			fmt.Printf("<%d>\n - Title: %s\n - Description: %s\n - URL: %s\n - DateTime: %v\n [%f out of 1.0]\n\n", i, b.Title, b.Description, b.URL, b.Datetime, b.Score)
-		}
-
-		log.Println("TOTAL TIME", "time:", time.Since(start))
-	*/
 
 	<-done
 	log.Println("Closing SSH Server...")

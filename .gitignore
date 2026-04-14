@@ -1,4 +1,4 @@
 *.rdb
-server/ssh_keys/*
-server/go.sum
-server/tmp
+ssh_keys/*
+go.sum
+tmp

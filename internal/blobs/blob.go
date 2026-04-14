@@ -3,10 +3,11 @@ package blobs
 import (
 	"encoding/json"
 	"math"
-	"search_engine/stemmer"
 	"strings"
 	"time"
 	"unicode"
+
+	"search_engine/third_party/stemmer"
 
 	"github.com/google/uuid"
 )

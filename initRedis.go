@@ -1,7 +1,7 @@
 package main
 
 import (
-	"search_engine/db"
+	"search_engine/internal/db"
 
 	"github.com/redis/go-redis/v9"
 )

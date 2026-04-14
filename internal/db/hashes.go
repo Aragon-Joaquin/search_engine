@@ -3,7 +3,8 @@ package db
 import (
 	"context"
 	"fmt"
-	"search_engine/blobs"
+
+	"search_engine/internal/blobs"
 
 	"github.com/google/uuid"
 )
