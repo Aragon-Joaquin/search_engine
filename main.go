@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"search_engine/internal/blobs"
+	"search_engine/internal/repository"
 	"search_engine/internal/utils"
 
 	"github.com/charmbracelet/ssh"
@@ -28,6 +29,13 @@ var (
 
 	start time.Time
 )
+
+type Application struct {
+	rep    *repository.Repository
+	server *ssh.Server
+}
+
+var app *Application
 
 func init() {
 	start = time.Now()
@@ -57,6 +65,11 @@ func main() {
 	s, err := initServer()
 	if err != nil {
 		panic(err)
+	}
+
+	app = &Application{
+		rep:    repository.CreateRepostory(DBRedis),
+		server: s,
 	}
 
 	done := make(chan os.Signal, 1)

@@ -3,6 +3,7 @@ package tui
 import (
 	"log"
 
+	"search_engine/internal/repository"
 	"search_engine/internal/utils"
 
 	"charm.land/bubbles/v2/spinner"
@@ -51,7 +52,11 @@ type PTYModel struct {
 	spinner spinner.Model
 }
 
-func CreatePTYModel(w, h int, t string) PTYModel {
+// uhm...is there a better way?
+var rep *repository.Repository
+
+func CreatePTYModel(r *repository.Repository, w, h int, t string) PTYModel {
+	rep = r
 	pty := PTYModel{
 		width:  w,
 		height: h,
@@ -70,12 +75,12 @@ func (m PTYModel) Init() tea.Cmd {
 }
 
 func (m PTYModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "ctrl+c", "esc":
-			tea.ClearScreen()
-			return m, tea.Quit
+			cmd = tea.Batch(tea.ClearScreen, tea.Quit)
 		}
 
 		log.Printf("KEY PRESSED: %s\n", msg.Text, msg.String())
@@ -85,6 +90,10 @@ func (m PTYModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		log.Println("WIDTH: ", msg.Width, " HEIGHT: ", msg.Height)
 	default:
 		log.Printf("UNKNOWN: %#v\n", msg)
+	}
+
+	if cmd != nil {
+		return m, cmd
 	}
 
 	return m, screen.Update(msg)

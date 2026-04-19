@@ -33,7 +33,10 @@ func (m *main_screen) Update(msg tea.Msg) tea.Cmd {
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "enter":
-			return changeCurrentScreen(CreateResultsScreen())
+			value := strings.TrimSpace(m.textInput.Value())
+			if m.textInput.Value() != "" {
+				return changeCurrentScreen(CreateResultsScreen(value))
+			}
 		}
 	}
 

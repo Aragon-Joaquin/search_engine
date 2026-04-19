@@ -25,6 +25,7 @@ func initServer() (*ssh.Server, error) {
 					return nil, []tea.ProgramOption{}
 				}
 				return tui.CreatePTYModel(
+						app.rep,
 						pty.Window.Width,
 						pty.Window.Height,
 						pty.Term),
