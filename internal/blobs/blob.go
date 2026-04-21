@@ -56,6 +56,7 @@ func (b *Blob) GetUUID() string {
 }
 
 func (b *Blob) StemWords(content string) {
+	// strings.ToUpper(content) ???
 	parsed := strings.FieldsFunc(content, func(r rune) bool {
 		return unicode.IsPunct(r) || unicode.IsSpace(r) || unicode.IsSymbol(r)
 	})

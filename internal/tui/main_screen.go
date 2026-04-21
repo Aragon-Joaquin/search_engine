@@ -64,7 +64,7 @@ var (
 			Width(70).
 			Margin(2, 10).
 			Height(1).
-			BorderStyle(lipgloss.ASCIIBorder()).
+			BorderStyle(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Red)
 )
 

@@ -19,7 +19,8 @@ var (
  /_/   \_\_|  \__, |\___/|_| |_| 
               |___/              `
 
-	VERSION = utils.GetEnv(utils.ENV_VER)
+	VERSION      = utils.GetEnv(utils.ENV_VER)
+	MARGIN_SIDES = 2
 )
 
 type CurrentScreen interface {
@@ -32,7 +33,7 @@ var screen CurrentScreen = CreateMainScreen()
 
 func changeCurrentScreen(c CurrentScreen) tea.Cmd {
 	screen = c
-	return tea.ClearScreen
+	return tea.Batch(tea.ClearScreen, tea.RequestWindowSize)
 }
 
 // needs to implement the tea.Model interface
@@ -75,14 +76,14 @@ func (m PTYModel) Init() tea.Cmd {
 }
 
 func (m PTYModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
+	var cmds []tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "ctrl+c", "esc":
-			cmd = tea.Batch(tea.ClearScreen, tea.Quit)
+			cmds = append(cmds, tea.ClearScreen, tea.Quit)
 		}
-
 		log.Printf("KEY PRESSED: %s\n", msg.Text, msg.String())
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -92,11 +93,14 @@ func (m PTYModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		log.Printf("UNKNOWN: %#v\n", msg)
 	}
 
-	if cmd != nil {
-		return m, cmd
+	// look at this later
+	cmd := screen.Update(msg)
+
+	if len(cmds) != 0 {
+		return m, tea.Batch(cmds...)
 	}
 
-	return m, screen.Update(msg)
+	return m, cmd
 }
 
 func (m PTYModel) View() tea.View {
