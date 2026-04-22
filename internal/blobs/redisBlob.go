@@ -25,7 +25,13 @@ func (r *RedisBlob) TransformToBlob() *Blob {
 	blob := CreateBlob()
 
 	blob.Title = r.Title
-	blob.Description = r.Description
+
+	if r.Description != "" {
+		blob.Description = r.Description
+	} else {
+		blob.Description = "No description provided"
+	}
+
 	blob.Datetime = r.Datetime
 	blob.URL = r.URL
 

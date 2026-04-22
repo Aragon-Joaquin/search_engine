@@ -19,7 +19,8 @@ const (
 )
 
 type results_screen struct {
-	items []*blobs.Blob
+	items     []*blobs.Blob
+	queryMade string
 
 	ready bool
 
@@ -43,6 +44,7 @@ func CreateResultsScreen(search_query string) CurrentScreen {
 		minBlobs = append(minBlobs, b)
 	}
 	return &results_screen{
+		queryMade:   search_query,
 		items:       minBlobs,
 		searchInput: ti,
 		viewport:    viewport.New(),
@@ -73,7 +75,10 @@ func AssignColorToScore(s int) color.Color {
 	return lipgloss.Magenta
 }
 
-var CURRENT_SELECTOR int = 0
+var (
+	CURRENT_SELECTOR        int = 0
+	HEADER_FOCUSEABLE_ITEMS int = 1
+)
 
 func (m *results_screen) Update(msg tea.Msg) tea.Cmd {
 	var cmds []tea.Cmd
@@ -88,8 +93,16 @@ func (m *results_screen) Update(msg tea.Msg) tea.Cmd {
 				}
 			}
 
+			if CURRENT_SELECTOR != 0 && len(m.items) >= CURRENT_SELECTOR-1 {
+				item := m.items[CURRENT_SELECTOR-1]
+				if item != nil {
+					return changeCurrentScreen(CreateBlobInfoScreen(item, m.queryMade))
+				}
+
+			}
+
 		case "down", "j":
-			if CURRENT_SELECTOR+1 < len(m.items) {
+			if CURRENT_SELECTOR+1 < len(m.items)+HEADER_FOCUSEABLE_ITEMS {
 				CURRENT_SELECTOR = CURRENT_SELECTOR + 1
 			}
 
@@ -124,6 +137,7 @@ func (m *results_screen) Update(msg tea.Msg) tea.Cmd {
 
 func (m *results_screen) View(w, h int) tea.View {
 	itemsListed := []string{}
+
 	// render blobs info
 	for index, i := range m.items {
 		scoreParsed := int(i.Score * 100)
@@ -138,12 +152,7 @@ func (m *results_screen) View(w, h int) tea.View {
 			Padding(0, 2).
 			MaxWidth(150)
 
-		descriptionFallback := "No description provided"
-		if i.Description != "" {
-			descriptionFallback = i.Description
-		}
-
-		if index == CURRENT_SELECTOR {
+		if CURRENT_SELECTOR >= HEADER_FOCUSEABLE_ITEMS-1 && index == (CURRENT_SELECTOR-HEADER_FOCUSEABLE_ITEMS) {
 			list = list.Border(lipgloss.DoubleBorder(), true).BorderForeground(lipgloss.BrightYellow)
 		}
 
@@ -187,7 +196,9 @@ func (m *results_screen) View(w, h int) tea.View {
 		bottomDescription := lipgloss.NewStyle().
 			PaddingTop(1).
 			Align(lipgloss.Left).
-			Render(descriptionFallback)
+			MaxWidth(list.GetWidth() - listMargin*2).
+			MaxHeight(2).
+			Render(i.Description)
 
 		// united all
 		itemsListed = append(itemsListed,
@@ -224,6 +235,13 @@ func (m *results_screen) View(w, h int) tea.View {
 }
 
 func (m *results_screen) headerView() string {
-	title := lipgloss.NewStyle().Margin(1, MARGIN_SIDES*2).Render(m.searchInput.View())
-	return lipgloss.JoinHorizontal(lipgloss.Center, title)
+	title := lipgloss.NewStyle().Margin(1, MARGIN_SIDES*2)
+	if CURRENT_SELECTOR < HEADER_FOCUSEABLE_ITEMS {
+		title = title.Border(lipgloss.DoubleBorder(), true).BorderForeground(lipgloss.Yellow)
+		m.searchInput.Focus()
+	} else {
+		m.searchInput.Blur()
+	}
+
+	return lipgloss.JoinHorizontal(lipgloss.Center, title.Render(m.searchInput.View()))
 }
