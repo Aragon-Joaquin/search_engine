@@ -93,7 +93,7 @@ func (m PTYModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		log.Printf("UNKNOWN: %#v\n", msg)
 	}
 
-	// look at this later
+	// NOTE: look at this later
 	cmd := screen.Update(msg)
 
 	if len(cmds) != 0 {

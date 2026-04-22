@@ -135,6 +135,41 @@ func (m *results_screen) Update(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
+var (
+	// general
+	list = lipgloss.NewStyle().
+		Align(lipgloss.Center).
+		Border(lipgloss.RoundedBorder(), true).
+		Padding(0, 2).
+		MaxWidth(150)
+
+	// header
+	headerTitle = lipgloss.NewStyle().
+			AlignHorizontal(lipgloss.Left).
+			Bold(true)
+
+	headerDate = lipgloss.NewStyle().
+			AlignHorizontal(lipgloss.Right).
+			Foreground(lipgloss.BrightBlack)
+
+	header = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), false, false, true, false).BorderForeground(lipgloss.Color("#444"))
+
+	// info card
+	infoUrl = lipgloss.NewStyle().
+		AlignHorizontal(lipgloss.Left).
+		Foreground(lipgloss.Blue).
+		Underline(true)
+
+	infoScore = lipgloss.NewStyle().
+			AlignHorizontal(lipgloss.Right)
+
+	// description
+	bottomDescription = lipgloss.NewStyle().
+				PaddingTop(1).
+				Align(lipgloss.Left).
+				MaxHeight(2)
+)
+
 func (m *results_screen) View(w, h int) tea.View {
 	itemsListed := []string{}
 
@@ -143,14 +178,10 @@ func (m *results_screen) View(w, h int) tea.View {
 		scoreParsed := int(i.Score * 100)
 
 		listMargin := MARGIN_SIDES * 2
-		list := lipgloss.NewStyle().
-			Align(lipgloss.Center).
-			Margin(1, listMargin).
-			Width(w-(listMargin*2)).
-			Border(lipgloss.RoundedBorder(), true).
+		list = list.
 			BorderForeground(lipgloss.Red).
-			Padding(0, 2).
-			MaxWidth(150)
+			Margin(1, listMargin).
+			Width(w - (listMargin * 2))
 
 		if CURRENT_SELECTOR >= HEADER_FOCUSEABLE_ITEMS-1 && index == (CURRENT_SELECTOR-HEADER_FOCUSEABLE_ITEMS) {
 			list = list.Border(lipgloss.DoubleBorder(), true).BorderForeground(lipgloss.BrightYellow)
@@ -159,45 +190,30 @@ func (m *results_screen) View(w, h int) tea.View {
 		// NOTE: header card (title + date)
 		formattedDate := i.Datetime.Format("2006/01/2")
 
-		headerTitle := lipgloss.NewStyle().
+		headerTitleStr := headerTitle.
 			Width(list.GetWidth() - len(formattedDate) - (listMargin * 2)).
-			AlignHorizontal(lipgloss.Left).
-			Bold(true).
 			Render(i.Title)
 
-		headerDate := lipgloss.NewStyle().
-			Width(len(formattedDate)).
-			AlignHorizontal(lipgloss.Right).
-			Foreground(lipgloss.BrightBlack).
-			Render(formattedDate)
-
-		header := lipgloss.NewStyle().Border(lipgloss.NormalBorder(), false, false, true, false).BorderForeground(lipgloss.Color("#444")).Render(headerTitle, headerDate)
+		headerDateStr := headerDate.Width(len(formattedDate)).Render(formattedDate)
 
 		// NOTE: information card (url, + score)
 		scoreToStr := strconv.Itoa(scoreParsed) + "% Match"
 
-		infoUrl := lipgloss.NewStyle().
+		infoUrlStr := infoUrl.
 			Width(list.GetWidth() - len(scoreToStr) - listMargin*2).
-			AlignHorizontal(lipgloss.Left).
 			Hyperlink(i.URL).
-			Foreground(lipgloss.Blue).
-			Underline(true).
 			Render(i.URL)
 
-		infoScore := lipgloss.NewStyle().
+		infoScoreStr := infoScore.
 			Width(len(scoreToStr)).
-			AlignHorizontal(lipgloss.Right).
 			Foreground(AssignColorToScore(scoreParsed)).
 			Render(scoreToStr)
 
-		informationCard := lipgloss.NewStyle().Render(infoUrl, infoScore)
+		informationCard := lipgloss.NewStyle().Render(infoUrlStr, infoScoreStr)
 
 		// description (bottom)
-		bottomDescription := lipgloss.NewStyle().
-			PaddingTop(1).
-			Align(lipgloss.Left).
+		bottomDescriptionStr := bottomDescription.
 			MaxWidth(list.GetWidth() - listMargin*2).
-			MaxHeight(2).
 			Render(i.Description)
 
 		// united all
@@ -205,9 +221,9 @@ func (m *results_screen) View(w, h int) tea.View {
 			list.Render(
 				lipgloss.JoinVertical(
 					lipgloss.Left,
-					header,
+					header.Render(headerTitleStr, headerDateStr),
 					informationCard,
-					bottomDescription,
+					bottomDescriptionStr,
 				),
 			),
 		)
