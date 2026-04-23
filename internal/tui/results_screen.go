@@ -101,12 +101,12 @@ func (m *results_screen) Update(msg tea.Msg) tea.Cmd {
 
 			}
 
-		case "down", "j":
+		case "down":
 			if CURRENT_SELECTOR+1 < len(m.items)+HEADER_FOCUSEABLE_ITEMS {
 				CURRENT_SELECTOR = CURRENT_SELECTOR + 1
 			}
 
-		case "up", "k":
+		case "up":
 			if CURRENT_SELECTOR-1 >= 0 {
 				CURRENT_SELECTOR = CURRENT_SELECTOR - 1
 			}
@@ -121,7 +121,7 @@ func (m *results_screen) Update(msg tea.Msg) tea.Cmd {
 			m.ready = true
 		} else {
 			m.viewport.SetWidth(msg.Width)
-			m.viewport.SetHeight(msg.Height - headerHeight)
+			m.viewport.SetHeight(msg.Height - headerHeight - (showKeysLayout.GetHeight()))
 		}
 
 	}
@@ -248,7 +248,8 @@ func (m *results_screen) View(w, h int) tea.View {
 }
 
 func (m *results_screen) headerView() string {
-	title := lipgloss.NewStyle().Margin(1, MARGIN_SIDES*2)
+	title := lipgloss.NewStyle().Padding(0, 1).Margin(0, MARGIN_SIDES).Border(lipgloss.RoundedBorder(), true).BorderForeground(lipgloss.BrightBlack)
+
 	if CURRENT_SELECTOR < HEADER_FOCUSEABLE_ITEMS {
 		title = title.Border(lipgloss.DoubleBorder(), true).BorderForeground(lipgloss.Yellow)
 		m.searchInput.Focus()
