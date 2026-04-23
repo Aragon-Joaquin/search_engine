@@ -237,9 +237,6 @@ func (m *results_screen) View(w, h int) tea.View {
 	)
 
 	var v tea.View
-	v.AltScreen = true
-	v.MouseMode = tea.MouseModeCellMotion
-
 	if !m.ready {
 		v.SetContent("\n  Initializing...")
 	} else {

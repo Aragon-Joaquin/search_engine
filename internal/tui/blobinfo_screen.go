@@ -79,9 +79,6 @@ func (m *blobinfo_screen) View(w, h int) tea.View {
 	)
 
 	var v tea.View
-	v.MouseMode = tea.MouseModeCellMotion
-	v.AltScreen = true
-
 	v.SetContent(fmt.Sprintf("%s\n%s",
 		m.headerView(h, w),
 		m.viewport.View(),

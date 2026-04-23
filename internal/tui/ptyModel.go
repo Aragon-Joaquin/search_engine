@@ -76,33 +76,32 @@ func (m PTYModel) Init() tea.Cmd {
 }
 
 func (m PTYModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmds []tea.Cmd
-
+	// i dont know how to clear the screen on exit
+	// without copying and pasting this everywhere
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "ctrl+c", "esc":
-			cmds = append(cmds, tea.ClearScreen, tea.Quit)
+			return m, tea.Sequence(tea.ClearScreen, tea.Quit)
 		}
 		log.Printf("KEY PRESSED: %s\n", msg.Text, msg.String())
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 		log.Println("WIDTH: ", msg.Width, " HEIGHT: ", msg.Height)
+
 	default:
 		log.Printf("UNKNOWN: %#v\n", msg)
 	}
 
-	// NOTE: look at this later
-	cmd := screen.Update(msg)
-
-	if len(cmds) != 0 {
-		return m, tea.Batch(cmds...)
-	}
-
-	return m, cmd
+	return m, screen.Update(msg)
 }
 
 func (m PTYModel) View() tea.View {
-	return screen.View(m.width, m.height)
+	content := screen.View(m.width, m.height)
+	content.AltScreen = true
+	content.MouseMode = tea.MouseModeCellMotion
+	content.WindowTitle = "Argon"
+
+	return content
 }

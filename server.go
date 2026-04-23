@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/wish/v2"
+	"charm.land/wish/v2/activeterm"
 	"charm.land/wish/v2/bubbletea"
 	"github.com/charmbracelet/ssh"
 )
@@ -17,7 +18,7 @@ func initServer() (*ssh.Server, error) {
 		wish.WithAddress(net.JoinHostPort(HOST, PORT)),
 		wish.WithHostKeyPath(KEYHOST_PATH),
 		wish.WithMiddleware(
-			// activeterm.Middleware(),
+			activeterm.Middleware(),
 			// logging.Middleware(),
 			bubbletea.Middleware(func(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 				pty, _, ok := s.Pty()

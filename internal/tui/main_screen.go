@@ -121,7 +121,6 @@ func (m *main_screen) View(w, h int) tea.View {
 			),
 	)
 
-	v.AltScreen = true
 	v.Cursor = c
 	return v
 }
