@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	MIN_THRESHOLD = -1
+	MIN_THRESHOLD = 5
 )
 
 type results_screen struct {

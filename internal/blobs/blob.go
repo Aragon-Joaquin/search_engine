@@ -3,6 +3,7 @@ package blobs
 import (
 	"encoding/json"
 	"math"
+	"slices"
 	"strings"
 	"time"
 	"unicode"
@@ -56,12 +57,20 @@ func (b *Blob) GetUUID() string {
 }
 
 func (b *Blob) StemWords(content string) {
-	// strings.ToUpper(content) ???
 	parsed := strings.FieldsFunc(content, func(r rune) bool {
 		return unicode.IsPunct(r) || unicode.IsSpace(r) || unicode.IsSymbol(r)
 	})
 
-	stemmer := stemmer.StemMultiple(parsed)
+	skipStopWords := []string{}
+	for _, w := range parsed {
+		if ok := slices.Contains(stopWords, w); !ok {
+			continue
+		}
+
+		skipStopWords = append(skipStopWords, w)
+	}
+
+	stemmer := stemmer.StemMultiple(skipStopWords)
 
 	b.Length = len(stemmer)
 	b.TermSpace = b.SetTermSpace(stemmer)
