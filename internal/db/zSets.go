@@ -16,7 +16,7 @@ type RedisClient struct {
 }
 
 func zortedKey(idTitle string) string {
-	return fmt.Sprintf("zset:%s", idTitle)
+	return fmt.Sprintf("%s:%s", ZSET, idTitle)
 }
 
 // TODO: use sortedSets for documents and maybe a set for stopWords
@@ -32,7 +32,9 @@ func (r *RedisClient) AddZSort(ctx context.Context, blob *blobs.Blob) error {
 		zortedSet = append(zortedSet, redis.Z{Score: float64(s), Member: m})
 	}
 
-	if err := r.Db.ZAdd(ctx, zortedKey(blob.GetUUID()), zortedSet...).Err(); err != nil {
+	id := r.GetBlobUniqueIdentifier(blob)
+
+	if err := r.Db.ZAdd(ctx, zortedKey(id), zortedSet...).Err(); err != nil {
 		return err
 	}
 
@@ -61,7 +63,7 @@ func (r *RedisClient) GetAllZBlobs(ctx context.Context) (*blobs.BlobList, error)
 	}
 
 	blist := blobs.CreateBlobList()
-	for _, title := range *names {
+	for _, title := range names {
 		// todo: make go func
 		// pipe := r.Db.TxPipeline()
 

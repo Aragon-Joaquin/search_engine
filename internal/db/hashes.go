@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	"search_engine/internal/blobs"
-
-	"github.com/google/uuid"
 )
 
 const (
@@ -14,25 +12,21 @@ const (
 )
 
 func hashKey(idTitle string) string {
-	return fmt.Sprintf("hash:%s", idTitle)
+	return fmt.Sprintf("%s:%s", HASH, idTitle)
 }
 
 func (r *RedisClient) SetMetaData(ctx context.Context, blob *blobs.Blob) error {
-	if err := r.Db.HSet(ctx, hashKey(blob.GetUUID()), blob.SaveBlobInformation()).Err(); err != nil {
+	id := r.GetBlobUniqueIdentifier(blob)
+	if err := r.Db.HSet(ctx, hashKey(id), blob.ParseToRedisBlob()).Err(); err != nil {
 		return err
 	}
-
-	if err := r.Db.SAdd(ctx, SET_NAMES_KEY, blob.GetUUID()).Err(); err != nil {
-		return err
-	}
-
 	return nil
 }
 
-func (r *RedisClient) GetMetaData(ctx context.Context, idTitle uuid.UUID) (*blobs.Blob, error) {
+func (r *RedisClient) GetMetaData(ctx context.Context, blobname string) (*blobs.Blob, error) {
 	var redisblob blobs.RedisBlob
 
-	if err := r.Db.HGetAll(ctx, idTitle.String()).Scan(redisblob); err != nil {
+	if err := r.Db.HGetAll(ctx, blobname).Scan(redisblob); err != nil {
 		return nil, err
 	}
 
@@ -40,10 +34,26 @@ func (r *RedisClient) GetMetaData(ctx context.Context, idTitle uuid.UUID) (*blob
 	return blob, nil
 }
 
-func (r *RedisClient) GetAllBlobsNames(ctx context.Context) (*[]string, error) {
-	s, err := r.Db.SMembers(ctx, SET_NAMES_KEY).Result()
-	if err != nil {
-		return nil, err
+func (r *RedisClient) GetAllBlobsNames(ctx context.Context, limit ...int64) ([]string, error) {
+	var defaultLimit int64 = 20
+	if len(limit) > 1 {
+		defaultLimit = limit[0]
 	}
-	return &s, nil
+
+	// really anything, they both share the same name lol
+	iter := r.Db.Scan(ctx, 0, fmt.Sprintf("TYPE %s", HASH), defaultLimit).Iterator()
+	var keys []string
+
+	for iter.Next(ctx) {
+		if err := iter.Err(); err != nil {
+			return keys, err
+		}
+
+		val := iter.Val()
+		_, _, name := r.GetBlobFolderAndTitleFromIdentifier(val)
+		keys = append(keys, name)
+
+	}
+
+	return keys, nil
 }

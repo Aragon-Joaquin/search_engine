@@ -2,30 +2,29 @@ package blobs
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
+	"os"
 	"slices"
 	"strings"
 	"time"
 	"unicode"
 
+	"search_engine/internal/utils"
 	"search_engine/third_party/stemmer"
-
-	"github.com/google/uuid"
 )
 
 type blobHeaders struct {
-	Title       string    `redis:"title"`
-	Description string    `redis:"description"`
-	Datetime    time.Time `redis:"datetime"`
-	URL         string    `redis:"url"`
+	Folder      utils.INDEXERS `redis:"folder"`
+	Title       string         `redis:"title"`
+	Description string         `redis:"description"`
+	Datetime    time.Time      `redis:"datetime"`
+	URL         string         `redis:"url"`
 }
 
 type Blob struct {
 	// count all the ZScore of redis and stores it in this field
 	Length int `redis:"length"`
-
-	// name of the file in the path and unique identifier
-	UUID uuid.UUID `redis:"uuid"`
 
 	// Location string
 	Score float64
@@ -50,10 +49,6 @@ func CreateBlob() *Blob {
 // NOTE: no idea if im going to use this
 func (b *Blob) MarshalToBinary() ([]byte, error) {
 	return json.Marshal(b)
-}
-
-func (b *Blob) GetUUID() string {
-	return b.UUID.String()
 }
 
 func (b *Blob) StemWords(content string) {
@@ -142,4 +137,39 @@ func (b *Blob) CalculateDotProduct(query *Blob) float64 {
 	}
 
 	return float64(dotProduct) / (query.GetVectorMagnitute() * b.GetVectorMagnitute())
+}
+
+// BUG: handle files with "," (comma) in their names or brief descriptions
+func (b *Blob) ParseBlobContentsIntoFile(file *os.File, content *[]byte) error {
+	defer file.Close()
+
+	// header
+	_, err := file.WriteString(
+		fmt.Sprint(
+			b.Title,
+			",",
+			b.Description,
+			",",
+			b.Datetime,
+			",",
+			b.URL,
+			"\n",
+		),
+	)
+	if err != nil {
+		return err
+	}
+
+	_, err = file.WriteString(string(*content))
+	return err
+}
+
+// both saves into the redisdb + local
+func (b *Blob) SaveBlob(folder utils.INDEXERS, term string, content *[]byte) error {
+	f, err := utils.CreateFile(folder, term)
+	if err != nil {
+		return err
+	}
+
+	return b.ParseBlobContentsIntoFile(f, content)
 }

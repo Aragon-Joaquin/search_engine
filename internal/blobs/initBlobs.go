@@ -3,15 +3,13 @@ package blobs
 import (
 	"bytes"
 	"fmt"
-	"io"
-	"log"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/google/uuid"
+	"search_engine/internal/utils"
 )
 
 var (
@@ -42,101 +40,63 @@ func init() {
 }
 
 func LoadBlobsFromFolder() *BlobList {
-	files, err := os.ReadDir(blobsFilePath)
-	if err != nil {
-		panic(err)
+	var blobList BlobList
+
+	blobFile, err2 := ReadBlobsFromLocalFolder(utils.INDEXER_WIKIPEDIA)
+	if err2 != nil {
+		return &blobList
 	}
 
-	var wg sync.WaitGroup
-	var mu sync.Mutex
-
-	totalBlobs := &BlobList{}
-	for _, file := range files {
-		wg.Go(func() {
-			byteFile, err := os.Open(filepath.Join(blobsFilePath, file.Name()))
-			if err != nil {
-				log.Println("file error'ed: ", file.Name())
-				return
-			}
-
-			blobFile, err2 := ReadBlobFile(byteFile)
-			if err2 != nil {
-				log.Println("read failed: ", file.Name(), "REASON:", err2)
-				return
-			}
-
-			mu.Lock()
-			defer mu.Unlock()
-			totalBlobs.AppendBlob(blobFile)
-		})
+	for _, b := range blobFile {
+		blobList.AppendBlob(b)
 	}
 
-	wg.Wait()
-	return totalBlobs
+	return &blobList
 }
 
-const (
-	MAX_CAPACITY = 4096
-)
-
-func ReadBlobFile(f *os.File) (*Blob, error) {
-	b := CreateBlob()
-
-	// set the filename as uuid
-	id, err := uuid.Parse(filepath.Base(f.Name()))
-	if err != nil {
-		return nil, err
-	}
-
-	b.UUID = id
-	fileContent := make([]byte, MAX_CAPACITY)
-
-	var status readingStatus = readingHeader
-	for {
-		buf := make([]byte, 4096)
-		_, err := f.Read(buf)
+func ReadBlobsFromLocalFolder(folderPath utils.INDEXERS) ([]*Blob, error) {
+	var blobs []*Blob
+	err := filepath.WalkDir(filepath.Join(blobsFilePath, string(folderPath)), func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			log.Println("something happen with file: ", f.Name())
-			return nil, err
+			return err
 		}
 
-	loop:
-		for {
-			switch status {
-			case readingHeader:
-				eol := bytes.Index(buf, ResourceNurse)
-				if eol < 0 {
-					fileContent = append(fileContent, buf...)
-					break loop
-				}
-
-				header := strings.Split(string(buf[:eol]), ",")
-
-				if len(header) != 4 {
-					return nil, fmt.Errorf("header length should be 4, received %d", len(header))
-				}
-
-				b.Title = header[HeaderTitle]
-				b.Description = header[HeaderDescription]
-				b.URL = header[HeaderURL]
-
-				if dateTime, err := time.Parse(DateLayout, header[HeaderDatetime]); err == nil {
-					b.Datetime = dateTime
-				}
-
-				// if we read some bytes from the body accidentally
-				buf = buf[eol+len(ResourceNurse):]
-				status = readingBody
-
-			case readingBody:
-				fileContent = append(fileContent, buf...)
-				break loop
-			}
+		if d.IsDir() {
+			return nil
 		}
-	}
-	b.StemWords(string(fileContent))
-	return b, nil
+
+		file, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		// create blob
+		b := CreateBlob()
+		b.Folder = folderPath
+
+		// separate the header from the body
+		fileContent := bytes.SplitN(file, []byte("\r\n"), 1)
+		header := fileContent[0]
+		body := fileContent[1]
+
+		// we retrieve the header "metadata"
+		headerData := strings.Split(string(header), ",")
+		if len(headerData) != 4 {
+			return fmt.Errorf("header length should be 4, received %d", len(header))
+		}
+
+		b.Title = headerData[HeaderTitle]
+		b.Description = headerData[HeaderDescription]
+		b.URL = headerData[HeaderURL]
+
+		if dateTime, err := time.Parse(DateLayout, headerData[HeaderDatetime]); err == nil {
+			b.Datetime = dateTime
+		}
+
+		// lastly we stem its content
+		b.StemWords(string(body))
+		return nil
+	})
+
+	return blobs, err
 }

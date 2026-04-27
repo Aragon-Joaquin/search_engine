@@ -3,7 +3,7 @@ package blobs
 import (
 	"time"
 
-	"github.com/google/uuid"
+	"search_engine/internal/utils"
 )
 
 type RedisBlob struct {
@@ -13,17 +13,11 @@ type RedisBlob struct {
 	URL         string    `redis:"url"`
 
 	Length int    `redis:"length"`
-	UUID   string `redis:"uuid"`
+	Folder string `redis:"folder"`
 }
 
 func (r *RedisBlob) TransformToBlob() *Blob {
-	res, err := uuid.Parse(r.UUID)
-	if err != nil {
-		res = uuid.Nil
-	}
-
 	blob := CreateBlob()
-
 	blob.Title = r.Title
 
 	if r.Description != "" {
@@ -36,18 +30,18 @@ func (r *RedisBlob) TransformToBlob() *Blob {
 	blob.URL = r.URL
 
 	blob.Length = r.Length
-	blob.UUID = res
+	blob.Folder = utils.INDEXERS(r.Folder)
 
 	return blob
 }
 
-func (b *Blob) SaveBlobInformation() *RedisBlob {
+func (b *Blob) ParseToRedisBlob() *RedisBlob {
 	return &RedisBlob{
 		Title:       b.Title,
 		Description: b.Description,
 		Datetime:    b.Datetime,
 		URL:         b.URL,
 		Length:      b.Length,
-		UUID:        b.GetUUID(),
+		Folder:      string(b.Folder),
 	}
 }

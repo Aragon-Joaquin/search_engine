@@ -6,7 +6,7 @@ there are at least 3 data types saved in the redis db:
 
 1. hashes: store blob information
 2. sortedSet: stores blob's term space (list of all words)
-3. set: list of all files uuid (which represents their names in the data/)
+3. set **(no more use)**: list of all files uuid (which represents their names in the data/)
 
 - redis
 - elasticSearch

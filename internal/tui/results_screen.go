@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"search_engine/internal/blobs"
+	"search_engine/tools"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -36,8 +37,13 @@ func CreateResultsScreen(search_query string) CurrentScreen {
 	ti.CharLimit = 40
 	ti.SetWidth(120)
 
+	res := rep.UserMakeQuery(search_query)
+	if len(res) == 0 {
+		res = tools.CrawlIntoIndexer(search_query)
+	}
+
 	minBlobs := []*blobs.Blob{}
-	for _, b := range rep.UserMakeQuery(search_query) {
+	for _, b := range res {
 		if b.Score < float64(MIN_THRESHOLD)/100 {
 			continue
 		}
