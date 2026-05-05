@@ -8,7 +8,6 @@ import (
 
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
-	"charm.land/bubbles/v2/spinner"
 	"charm.land/lipgloss/v2"
 
 	tea "charm.land/bubbletea/v2"
@@ -35,9 +34,11 @@ type CurrentScreen interface {
 // i tried oop but the PTYModels keeps recreating so i loose the reference
 var screen CurrentScreen = CreateMainScreen()
 
-func changeCurrentScreen(c CurrentScreen) tea.Cmd {
+func changeCurrentScreen(c CurrentScreen, cmd ...tea.Cmd) tea.Cmd {
 	screen = c
-	return tea.Batch(tea.RequestWindowSize)
+
+	cmd = append(cmd, tea.RequestWindowSize)
+	return tea.Batch(cmd...)
 }
 
 // needs to implement the tea.Model interface
@@ -54,9 +55,8 @@ type PTYModel struct {
 	// time time.Time
 
 	// ui info
-	keys    keyMap
-	spinner spinner.Model
-	help    help.Model
+	keys keyMap
+	help help.Model
 }
 
 // uhm...is there a better way?
@@ -75,9 +75,8 @@ func CreatePTYModel(r *repository.Repository, w, h int, t string) PTYModel {
 		height: h,
 		term:   t,
 
-		keys:    initKeysMap,
-		spinner: spinner.New(),
-		help:    helpKeys,
+		keys: initKeysMap,
+		help: helpKeys,
 	}
 
 	return pty

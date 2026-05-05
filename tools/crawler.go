@@ -14,13 +14,15 @@ import (
 )
 
 const (
-	MAX_CONCURRENT_REQUESTS = 10
+	MAX_CONCURRENT_REQUESTS = 1
 )
 
 // crawls into webpages, saves them internally and return the results
 func CrawlIntoIndexer(term string) []*blobs.Blob {
 	c := colly.NewCollector(
-		colly.AllowedDomains(utils.GetAbsoluteIndexerURL(utils.INDEXER_WIKIPEDIA)),
+		colly.AllowedDomains(
+			"en.wikipedia.org",
+		),
 	)
 	c.DisableCookies()
 	c.AllowURLRevisit = false
@@ -47,7 +49,7 @@ func CrawlIntoIndexer(term string) []*blobs.Blob {
 
 			// send it to the channel
 			b := blobs.CreateBlob()
-			pageTitle := h.ChildText(".mw-page-title-main")
+			pageTitle := h.ChildText(".mw-page-title-main") // wikipedia hardcodded
 
 			b.Title = pageTitle
 			b.Datetime = time.Now().UTC()
@@ -93,7 +95,6 @@ func CrawlIntoIndexer(term string) []*blobs.Blob {
 	close(mdChan)
 
 	for md := range mdChan {
-		log.Println(md.Title)
 		results = append(results, md)
 	}
 
