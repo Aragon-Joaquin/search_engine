@@ -34,14 +34,14 @@ func (r *RedisClient) GetMetaData(ctx context.Context, blobname string) (*blobs.
 	return blob, nil
 }
 
-func (r *RedisClient) GetAllBlobsNames(ctx context.Context, limit ...int64) ([]string, error) {
+func (r *RedisClient) GetAllBlobsNames(ctx context.Context, typeName DATA_REDIS, start uint64, limit ...int64) ([]string, error) {
 	var defaultLimit int64 = 20
 	if len(limit) > 1 {
 		defaultLimit = limit[0]
 	}
 
 	// really anything, they both share the same name lol
-	iter := r.Db.Scan(ctx, 0, fmt.Sprintf("TYPE %s", HASH), defaultLimit).Iterator()
+	iter := r.Db.Scan(ctx, start, fmt.Sprintf("TYPE %s", typeName), defaultLimit).Iterator()
 	var keys []string
 
 	for iter.Next(ctx) {

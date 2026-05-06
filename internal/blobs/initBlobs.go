@@ -54,9 +54,9 @@ func LoadBlobsFromFolder() *BlobList {
 	return &blobList
 }
 
-func ReadBlobsFromLocalFolder(folderPath utils.INDEXERS) ([]*Blob, error) {
+func ReadBlobsFromLocalFolder(i utils.INDEXERS) ([]*Blob, error) {
 	var blobs []*Blob
-	err := filepath.WalkDir(filepath.Join(blobsFilePath, string(folderPath)), func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(filepath.Join(blobsFilePath, i.Indexer), func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -72,7 +72,7 @@ func ReadBlobsFromLocalFolder(folderPath utils.INDEXERS) ([]*Blob, error) {
 
 		// create blob
 		b := CreateBlob()
-		b.Folder = folderPath
+		b.Folder = i.Indexer
 
 		// separate the header from the body
 		fileContent := bytes.SplitN(file, []byte("\r\n"), 1)

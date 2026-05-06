@@ -10,16 +10,15 @@ import (
 	"time"
 	"unicode"
 
-	"search_engine/internal/utils"
 	"search_engine/third_party/stemmer"
 )
 
 type blobHeaders struct {
-	Folder      utils.INDEXERS `redis:"folder"`
-	Title       string         `redis:"title"`
-	Description string         `redis:"description"`
-	Datetime    time.Time      `redis:"datetime"`
-	URL         string         `redis:"url"`
+	Folder      string    `redis:"folder"`
+	Title       string    `redis:"title"`
+	Description string    `redis:"description"`
+	Datetime    time.Time `redis:"datetime"`
+	URL         string    `redis:"url"`
 }
 
 type Blob struct {
@@ -162,14 +161,4 @@ func (b *Blob) ParseBlobContentsIntoFile(file *os.File, content *[]byte) error {
 
 	_, err = file.WriteString(string(*content))
 	return err
-}
-
-// both saves into the redisdb + local
-func (b *Blob) SaveBlob(folder utils.INDEXERS, term string, content *[]byte) error {
-	f, err := utils.CreateFile(folder, term)
-	if err != nil {
-		return err
-	}
-
-	return b.ParseBlobContentsIntoFile(f, content)
 }

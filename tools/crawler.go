@@ -2,11 +2,13 @@ package tools
 
 import (
 	"log"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"search_engine/internal/blobs"
+	"search_engine/internal/repository"
 	"search_engine/internal/utils"
 
 	htmltomarkdown "github.com/JohannesKaufmann/html-to-markdown/v2"
@@ -17,23 +19,32 @@ const (
 	MAX_CONCURRENT_REQUESTS = 1
 )
 
-// crawls into webpages, saves them internally and return the results
-func CrawlIntoIndexer(term string) []*blobs.Blob {
+type Crawler struct {
+	c   *colly.Collector
+	rep *repository.Repository
+}
+
+func InitCrawler(rep *repository.Repository) *Crawler {
 	c := colly.NewCollector(
 		colly.AllowedDomains(
-			"en.wikipedia.org",
+			utils.INDEXER_WIKIPEDIA.Indexer,
 		),
 	)
 	c.DisableCookies()
 	c.AllowURLRevisit = false
 
-	searchUrl := utils.GetURL(utils.INDEXER_WIKIPEDIA, term)
+	return &Crawler{c, rep}
+}
+
+// crawls into webpages, saves them internally and return the results
+func (cr *Crawler) CrawlIntoIndexer(term string) []*blobs.Blob {
+	searchUrl := utils.INDEXER_WIKIPEDIA.Search(term)
 
 	mdChan := make(chan *blobs.Blob, MAX_CONCURRENT_REQUESTS)
 	var wg sync.WaitGroup
 	var atomicConcurrent atomic.Int32
 
-	c.OnHTML("body", func(h *colly.HTMLElement) {
+	cr.c.OnHTML("body", func(h *colly.HTMLElement) {
 		atomicConcurrent.Add(1)
 		wg.Go(func() {
 			// parse the content
@@ -49,18 +60,22 @@ func CrawlIntoIndexer(term string) []*blobs.Blob {
 
 			// send it to the channel
 			b := blobs.CreateBlob()
-			pageTitle := h.ChildText(".mw-page-title-main") // wikipedia hardcodded
+			// pageTitle := h.ChildText(".mw-page-title-main") // wikipedia hardcodded
 
-			b.Title = pageTitle
+			b.Title = strings.ToLower(term)
 			b.Datetime = time.Now().UTC()
-			b.Folder = utils.INDEXER_WIKIPEDIA
+			b.Folder = utils.INDEXER_WIKIPEDIA.Indexer
+			b.StemWords(string(markdown))
 
 			if selector := h.DOM.Find("meta[property=\"description\"]"); selector != nil {
 				b.Description = selector.AttrOr("property", "Not found")
 			}
 
+			if err := cr.rep.SaveBlob(b, utils.INDEXER_WIKIPEDIA, &markdown); err != nil {
+				return
+			}
+
 			mdChan <- b
-			b.SaveBlob(utils.INDEXER_WIKIPEDIA, pageTitle, &markdown)
 
 			// look for more content
 			var parseableLinks []string
@@ -86,8 +101,8 @@ func CrawlIntoIndexer(term string) []*blobs.Blob {
 
 	var results []*blobs.Blob
 
-	if err := c.Visit(searchUrl); err != nil {
-		log.Printf("error while visiting %s: %e\n", searchUrl, err)
+	if err := cr.c.Visit(searchUrl); err != nil {
+		log.Printf("error while visiting %s: %s\n", searchUrl, err.Error())
 		return results
 	}
 

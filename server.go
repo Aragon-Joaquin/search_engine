@@ -12,7 +12,7 @@ import (
 	"github.com/charmbracelet/ssh"
 )
 
-func initServer() (*ssh.Server, error) {
+func (app *Application) initServer() {
 	s, err := wish.NewServer(
 		ssh.AllocatePty(),
 		wish.WithAddress(net.JoinHostPort(HOST, PORT)),
@@ -27,6 +27,7 @@ func initServer() (*ssh.Server, error) {
 				}
 				return tui.CreatePTYModel(
 						app.rep,
+						app.crawler,
 						pty.Window.Width,
 						pty.Window.Height,
 						pty.Term),
@@ -35,8 +36,8 @@ func initServer() (*ssh.Server, error) {
 		),
 	)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
-	return s, nil
+	app.server = s
 }

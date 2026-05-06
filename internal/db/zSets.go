@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 
 	"search_engine/internal/blobs"
 
@@ -21,7 +22,7 @@ func zortedKey(idTitle string) string {
 
 // TODO: use sortedSets for documents and maybe a set for stopWords
 // and a HASHES for metadata
-func (r *RedisClient) AddZSort(ctx context.Context, blob *blobs.Blob) error {
+func (r *RedisClient) SaveBlobsToRedis(ctx context.Context, blob *blobs.Blob) error {
 	if len(blob.TermSpace) == 0 {
 		return fmt.Errorf("not enough termSpace size")
 	}
@@ -57,7 +58,7 @@ func (r *RedisClient) GetZSort(ctx context.Context, idTitle uuid.UUID) (*[]redis
 }
 
 func (r *RedisClient) GetAllZBlobs(ctx context.Context) (*blobs.BlobList, error) {
-	names, err := r.GetAllBlobsNames(ctx)
+	names, err := r.GetAllBlobsNames(ctx, HASH, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -95,4 +96,33 @@ func (r *RedisClient) GetAllZBlobs(ctx context.Context) (*blobs.BlobList, error)
 	}
 
 	return blist, nil
+}
+
+// what this does is:
+// > query a certain limit of zortedSets
+// > check each member of the termSpace of the blob to rank them
+// > select until the top X is satisfied
+// > query their metadata
+// > transform them into blobs
+// > return them
+func (r *RedisClient) FilterByTermInSpace(ctx context.Context, blobTerm *blobs.Blob) (*blobs.BlobList, error) {
+	var wg sync.WaitGroup
+	var limitCount int64 = 50 // can be increased
+
+	zNames, err := r.GetAllBlobsNames(ctx, ZSET, 0, limitCount)
+	if err != nil {
+		return nil, err
+	}
+
+	tx := r.Db.TxPipeline()
+	for range zNames {
+		wg.Go(func() {
+			// todo
+		})
+	}
+
+	tx.Exec(ctx)
+
+	wg.Wait()
+	return nil, nil
 }

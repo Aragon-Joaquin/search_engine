@@ -5,6 +5,7 @@ import (
 
 	"search_engine/internal/repository"
 	"search_engine/internal/utils"
+	"search_engine/tools"
 
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
@@ -59,11 +60,15 @@ type PTYModel struct {
 	help help.Model
 }
 
-// uhm...is there a better way?
-var rep *repository.Repository
+// TODO: uhm...is there a better way?
+var (
+	rep *repository.Repository
+	crw *tools.Crawler
+)
 
-func CreatePTYModel(r *repository.Repository, w, h int, t string) PTYModel {
+func CreatePTYModel(r *repository.Repository, c *tools.Crawler, w, h int, t string) PTYModel {
 	rep = r
+	crw = c
 
 	helpKeys := help.New()
 	helpKeys.ShowAll = true

@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"search_engine/internal/blobs"
-	"search_engine/tools"
 
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/textinput"
@@ -16,12 +15,11 @@ import (
 )
 
 const (
-	MIN_THRESHOLD = 5
+	MIN_THRESHOLD = -1
 )
 
 type results_screen struct {
 	queryMade string
-	bState    *itemsState
 
 	// viewport render
 	ready bool
@@ -36,17 +34,20 @@ type itemsState struct {
 	items     []*blobs.Blob
 }
 
+var bState = &itemsState{
+	isLoading: true,
+	items:     []*blobs.Blob{},
+}
+
 func CreateResultsScreen(search_query string) (CurrentScreen, tea.Cmd) {
-	itemsState := &itemsState{
-		isLoading: true,
-		items:     []*blobs.Blob{},
-	}
+	bState.isLoading = true
+	bState.items = []*blobs.Blob{}
 
 	go func() {
 		res := rep.UserMakeQuery(search_query)
 
 		if len(res) == 0 {
-			res = tools.CrawlIntoIndexer(search_query)
+			res = crw.CrawlIntoIndexer(search_query)
 		}
 
 		blobs := []*blobs.Blob{}
@@ -58,8 +59,8 @@ func CreateResultsScreen(search_query string) (CurrentScreen, tea.Cmd) {
 			blobs = append(blobs, b)
 		}
 
-		itemsState.isLoading = false
-		itemsState.items = blobs
+		bState.isLoading = false
+		bState.items = blobs
 	}()
 
 	ti := textinput.New()
@@ -74,7 +75,6 @@ func CreateResultsScreen(search_query string) (CurrentScreen, tea.Cmd) {
 
 	return &results_screen{
 		queryMade: search_query,
-		bState:    itemsState,
 
 		searchInput: ti,
 		viewport:    viewport.New(),
@@ -101,8 +101,8 @@ func (m *results_screen) Update(msg tea.Msg) tea.Cmd {
 				}
 			}
 
-			if CURRENT_SELECTOR != 0 && len(m.bState.items) >= CURRENT_SELECTOR-1 {
-				item := m.bState.items[CURRENT_SELECTOR-1]
+			if CURRENT_SELECTOR != 0 && len(bState.items) >= CURRENT_SELECTOR-1 {
+				item := bState.items[CURRENT_SELECTOR-1]
 				if item != nil {
 					return changeCurrentScreen(CreateBlobInfoScreen(item, m.queryMade))
 				}
@@ -110,7 +110,7 @@ func (m *results_screen) Update(msg tea.Msg) tea.Cmd {
 			}
 
 		case "down":
-			if CURRENT_SELECTOR+1 < len(m.bState.items)+HEADER_FOCUSEABLE_ITEMS {
+			if CURRENT_SELECTOR+1 < len(bState.items)+HEADER_FOCUSEABLE_ITEMS {
 				CURRENT_SELECTOR = CURRENT_SELECTOR + 1
 			}
 
@@ -120,7 +120,7 @@ func (m *results_screen) Update(msg tea.Msg) tea.Cmd {
 			}
 
 		case "q":
-			if m.bState.isLoading {
+			if bState.isLoading {
 				return changeCurrentScreen(CreateMainScreen())
 			}
 		}
@@ -145,7 +145,7 @@ func (m *results_screen) Update(msg tea.Msg) tea.Cmd {
 	m.searchInput, cmd = m.searchInput.Update(msg)
 	cmds = append(cmds, cmd)
 
-	if m.bState.isLoading {
+	if bState.isLoading {
 		m.spinner, cmd = m.spinner.Update(msg)
 		cmds = append(cmds, cmd)
 	}
@@ -195,8 +195,7 @@ func (m *results_screen) View(w, h int) tea.View {
 	// render blobs info
 	itemsListed := []string{}
 
-	fmt.Println(m.bState.items)
-	if !m.bState.isLoading && len(m.bState.items) <= 0 {
+	if !bState.isLoading && len(bState.items) <= 0 {
 		itemsListed = []string{
 			noItems.Width(w).Render("No items available!"),
 		}
@@ -211,7 +210,7 @@ func (m *results_screen) View(w, h int) tea.View {
 	)
 
 	spin := ""
-	if m.bState.isLoading {
+	if bState.isLoading {
 		spin = fmt.Sprintf("\n\n%s Loading forever...press q to quit\n\n", m.spinner.View())
 	}
 
@@ -237,16 +236,16 @@ func (m *results_screen) headerView() string {
 		m.searchInput.Blur()
 	}
 
-	if !m.bState.isLoading {
+	if !bState.isLoading {
 		return lipgloss.JoinHorizontal(lipgloss.Center, titleSearch.Render(m.searchInput.View()))
 	}
 
 	return ""
 }
 
-func (m *results_screen) bodyView(w, h int) []string {
+func (m *results_screen) bodyView(w, _ int) []string {
 	itemsListed := []string{}
-	for index, i := range m.bState.items {
+	for index, i := range bState.items {
 		scoreParsed := int(i.Score * 100)
 
 		listMargin := MARGIN_SIDES * 2

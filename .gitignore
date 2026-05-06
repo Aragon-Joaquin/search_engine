@@ -2,3 +2,5 @@
 ssh_keys/*
 go.sum
 tmp
+data/*
+!data/.gitkeep

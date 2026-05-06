@@ -2,8 +2,6 @@ package blobs
 
 import (
 	"time"
-
-	"search_engine/internal/utils"
 )
 
 type RedisBlob struct {
@@ -30,7 +28,7 @@ func (r *RedisBlob) TransformToBlob() *Blob {
 	blob.URL = r.URL
 
 	blob.Length = r.Length
-	blob.Folder = utils.INDEXERS(r.Folder)
+	blob.Folder = r.Folder
 
 	return blob
 }

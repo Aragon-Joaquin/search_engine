@@ -15,6 +15,7 @@ import (
 	"search_engine/internal/blobs"
 	"search_engine/internal/repository"
 	"search_engine/internal/utils"
+	"search_engine/tools"
 
 	"github.com/charmbracelet/ssh"
 )
@@ -31,8 +32,9 @@ var (
 )
 
 type Application struct {
-	rep    *repository.Repository
-	server *ssh.Server
+	rep     *repository.Repository
+	server  *ssh.Server
+	crawler *tools.Crawler
 }
 
 var app *Application
@@ -61,23 +63,21 @@ func main() {
 		return
 	}
 
-	// NOTE: else, we boot up the ssh server
-	s, err := initServer()
-	if err != nil {
-		panic(err)
-	}
+	// init services
+	app = &Application{}
 
-	app = &Application{
-		rep:    repository.CreateRepostory(DBRedis),
-		server: s,
-	}
+	app.rep = repository.CreateRepository(DBRedis)
+	app.crawler = tools.InitCrawler(app.rep)
+
+	// NOTE: boot up the ssh server
+	app.initServer()
 
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	log.Println("Starting SSH server", "host", HOST, "port", PORT)
 
 	go func() {
-		if err = s.ListenAndServe(); err != nil && !errors.Is(err, ssh.ErrServerClosed) {
+		if err := app.server.ListenAndServe(); err != nil && !errors.Is(err, ssh.ErrServerClosed) {
 			log.Fatalln("Could not start server", "error", err)
 			done <- nil
 		}
@@ -98,7 +98,7 @@ func loadBlobs() {
 	go func() {
 		for _, blob := range blobList.Blobs {
 			wg.Go(func() {
-				if err := DBRedis.AddZSort(ctx, blob); err != nil {
+				if err := DBRedis.SaveBlobsToRedis(ctx, blob); err != nil {
 					log.Println("Error in one of the blobs while trying to load it to redis: ", err)
 				}
 			})

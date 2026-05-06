@@ -6,27 +6,24 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"runtime"
 )
 
 const (
 	BLOBS_FOLDER = "/data"
 )
 
-var (
-	_, b, _, _ = runtime.Caller(0)
-	basepath   = filepath.Join(filepath.Dir(b), BLOBS_FOLDER)
+var err_empty_filename = errors.New("empty filname")
 
-	err_empty_filename = errors.New("empty filname")
-)
-
-func CreateFile(folder INDEXERS, filename string) (file *os.File, err error) {
-	ffolder := string(folder)
+func (i INDEXERS) CreateFile(filename string) (file *os.File, err error) {
+	ffolder := i.Indexer
 	if ffolder == "" {
 		return nil, err_empty_filename
 	}
 
-	indexerFolderPath := filepath.Join(basepath, ffolder)
+	indexerFolderPath, err := i.AppendToWorkingDirectory()
+	if err != nil {
+		return nil, err
+	}
 
 	_, err = os.Stat(indexerFolderPath)
 	if err != nil {
@@ -43,14 +40,19 @@ func CreateFile(folder INDEXERS, filename string) (file *os.File, err error) {
 	return file, err
 }
 
-func FindFileName(folder INDEXERS, filename string) (pathFound string, err error) {
+func (i INDEXERS) FindFileName(filename string) (pathFound string, err error) {
 	if filename == "" {
 		return "", err_empty_filename
 	}
 
-	ffolder := string(folder)
+	ffolder := i.Indexer
 	if ffolder == "" {
 		return "", err_empty_filename
+	}
+
+	basepath, err := i.AppendToWorkingDirectory()
+	if err != nil {
+		return "", err
 	}
 
 	err = filepath.WalkDir(filepath.Join(basepath, ffolder), func(path string, d fs.DirEntry, err error) error {
