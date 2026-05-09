@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -19,14 +20,39 @@ func (r *RedisClient) GetBlobUniqueIdentifier(blob *blobs.Blob) string {
 	return fmt.Sprintf("%s|%s", res, blob.Title)
 }
 
-func (r *RedisClient) GetBlobFolderAndTitleFromIdentifier(id string) (typeblob string, folder string, name string) {
+type BlobName struct {
+	TypeBlob DATA_REDIS
+	Folder   string
+	Name     string
+}
+
+func (r *RedisClient) GetBlobFolderAndTitleFromIdentifier(id string) (*BlobName, error) {
+	if len(id) < 3 {
+		return nil, errors.New("insufficient length for the string")
+	}
+
+	bName := BlobName{}
+
 	// we split first for the "hash:" or "zset:"
-	c := strings.SplitN(id, ":", 1)
-	typeBlob := c[0]
+	before, after, found := strings.Cut(id, ":")
+	if !found {
+		return nil, errors.New("could find the datatype")
+	}
 
-	res := strings.SplitN(c[1], "|", 1)
-	folder = res[0]
-	name = res[1]
+	bName.TypeBlob = DATA_REDIS(before)
 
-	return typeBlob, folder, name
+	nA, nB, nF := strings.Cut(after, "|")
+
+	if !nF {
+		return nil, errors.New("couldnt find both name and folder")
+	}
+
+	bName.Folder = nA
+	bName.Name = nB
+
+	return &bName, nil
+}
+
+func (b *BlobName) FullName() string {
+	return fmt.Sprintf("%s:%s|%s", b.TypeBlob, b.Folder, b.Name)
 }

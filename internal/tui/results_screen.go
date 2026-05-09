@@ -14,10 +14,6 @@ import (
 	"charm.land/bubbles/v2/viewport"
 )
 
-const (
-	MIN_THRESHOLD = -1
-)
-
 type results_screen struct {
 	queryMade string
 
@@ -47,15 +43,13 @@ func CreateResultsScreen(search_query string) (CurrentScreen, tea.Cmd) {
 		res := rep.UserMakeQuery(search_query)
 
 		if len(res) == 0 {
+			panic("DO NOT ENTER THE CRAWLER")
 			res = crw.CrawlIntoIndexer(search_query)
 		}
 
 		blobs := []*blobs.Blob{}
 
 		for _, b := range res {
-			if b.Score < float64(MIN_THRESHOLD)/100 {
-				continue
-			}
 			blobs = append(blobs, b)
 		}
 
@@ -259,8 +253,7 @@ func (m *results_screen) bodyView(w, _ int) []string {
 		}
 
 		// NOTE: header card (title + date)
-		formattedDate := i.Datetime.Format("2006/01/2")
-
+		formattedDate := i.Datetime.String()
 		headerTitleStr := headerTitle.
 			Width(list.GetWidth() - len(formattedDate) - (listMargin * 2)).
 			Render(i.Title)

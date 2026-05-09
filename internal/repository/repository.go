@@ -22,14 +22,13 @@ func (r *Repository) UserMakeQuery(word string) []*blobs.Blob {
 	query := blobs.CreateBlob()
 	query.StemWords(word)
 
-	// TODO: finish
-	// ctx := context.Background()
-	// bList, err := r.db.GetAllZBlobs(ctx)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// return bList.Calculate_tf_idf(query)
-	return []*blobs.Blob{}
+	ctx := context.Background()
+	bList, err := r.db.FilterByTermInSpace(ctx, query)
+	if err != nil {
+		return []*blobs.Blob{}
+	}
+
+	return bList.Calculate_tf_idf(query)
 }
 
 // both saves into the redisdb + local

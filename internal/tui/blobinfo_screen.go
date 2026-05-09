@@ -65,7 +65,7 @@ func (m *blobinfo_screen) View(w, h int) tea.View {
 	titleStr = lipgloss.Place(w, 0, lipgloss.Center, lipgloss.Center, titleStr)
 
 	// body body
-	descriptionStr := description.Width(marginWidth + 8).Render(m.blob.Description)
+	descriptionStr := description.Width(marginWidth + 8).Render(m.blob.GetBodyContent())
 	descriptioSub := m.createSubtitle("Description", marginWidth+8)
 
 	descriptionStr = lipgloss.Place(w, h, lipgloss.Center, lipgloss.Top, fmt.Sprintf("%s\n%s", descriptioSub, descriptionStr))

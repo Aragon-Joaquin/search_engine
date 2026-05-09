@@ -55,7 +55,7 @@ func (bl *BlobList) Calculate_tf_idf(query *Blob) []*Blob {
 		// 	continue
 		// }
 
-		blob.Score = blob.CalculateDotProduct(query)
+		blob.CalculateDotProduct(query)
 	}
 
 	orderedBlobs := bl.Blobs

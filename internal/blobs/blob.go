@@ -29,16 +29,18 @@ type Blob struct {
 	Score float64
 	// this is calculated at the end, represents how exact was the match made with the query from 0 to 1
 
-	TermSpace map[string]int // map of the frecuency of each word
-	magnitude float64        // magnitude based on word frecuency
+	TermSpace map[string]uint64 // map of the frecuency of each word
+	magnitude float64           // magnitude based on word frecuency
 
 	blobHeaders `redis:"headers"`
+	Body        []byte
 }
 
 func CreateBlob() *Blob {
 	return &Blob{
-		TermSpace: map[string]int{},
+		TermSpace: map[string]uint64{},
 		Score:     -1,
+		Body:      []byte{},
 
 		magnitude:   -1,
 		blobHeaders: blobHeaders{},
@@ -57,7 +59,7 @@ func (b *Blob) StemWords(content string) {
 
 	skipStopWords := []string{}
 	for _, w := range parsed {
-		if ok := slices.Contains(stopWords, w); !ok {
+		if ok := slices.Contains(stopWords, w); ok {
 			continue
 		}
 
@@ -70,23 +72,14 @@ func (b *Blob) StemWords(content string) {
 	b.TermSpace = b.SetTermSpace(stemmer)
 }
 
-func (b *Blob) GetWordCount(word string) int {
-	b.initTermSpace() // uhhh
+func (b *Blob) GetWordCount(word string) uint64 {
 	if val, ok := b.TermSpace[word]; ok {
 		return val
 	}
 	return 0
 }
 
-func (b *Blob) initTermSpace() {
-	if b.TermSpace == nil {
-		b.TermSpace = map[string]int{}
-	}
-}
-
-func (b *Blob) SetTermSpace(stemmedContent []string) map[string]int {
-	b.initTermSpace()
-
+func (b *Blob) SetTermSpace(stemmedContent []string) map[string]uint64 {
 	for _, w := range stemmedContent {
 		val, _ := b.TermSpace[w]
 		b.TermSpace[w] = val + 1
@@ -95,8 +88,7 @@ func (b *Blob) SetTermSpace(stemmedContent []string) map[string]int {
 	return b.TermSpace
 }
 
-func (b *Blob) AddToTermSpace(word string, score int) {
-	b.initTermSpace()
+func (b *Blob) AddToTermSpace(word string, score uint64) {
 	b.TermSpace[word] = score
 }
 
@@ -108,7 +100,7 @@ func (b *Blob) GetVectorMagnitute() float64 {
 		return b.magnitude
 	}
 
-	var magnitude int = 0
+	var magnitude uint64 = 0
 	for _, val := range b.TermSpace {
 		magnitude += val * val
 	}
@@ -128,14 +120,14 @@ func (b *Blob) TermFrecuency(word string) float64 {
 //	-------------
 // ||Q|| x ||V1||
 
-func (b *Blob) CalculateDotProduct(query *Blob) float64 {
-	var dotProduct int = 0
+func (b *Blob) CalculateDotProduct(query *Blob) {
+	var dotProduct uint64 = 0
 	for key, value := range b.TermSpace {
 		val := query.GetWordCount(key)
 		dotProduct += val * value
 	}
 
-	return float64(dotProduct) / (query.GetVectorMagnitute() * b.GetVectorMagnitute())
+	b.Score = float64(dotProduct) / (query.GetVectorMagnitute() * b.GetVectorMagnitute())
 }
 
 // BUG: handle files with "," (comma) in their names or brief descriptions
@@ -161,4 +153,21 @@ func (b *Blob) ParseBlobContentsIntoFile(file *os.File, content *[]byte) error {
 
 	_, err = file.WriteString(string(*content))
 	return err
+}
+
+func (b *Blob) GetBodyContent() string {
+	if len(b.Body) == 0 {
+		return "Body unavailable"
+	}
+	return string(b.Body)
+}
+
+func (b *Blob) SetDateTime(val string) error {
+	date, err := time.Parse(DateLayout, val)
+	if err != nil {
+		return err
+	}
+
+	b.Datetime = date
+	return nil
 }

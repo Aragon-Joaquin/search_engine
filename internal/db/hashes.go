@@ -34,24 +34,30 @@ func (r *RedisClient) GetMetaData(ctx context.Context, blobname string) (*blobs.
 	return blob, nil
 }
 
-func (r *RedisClient) GetAllBlobsNames(ctx context.Context, typeName DATA_REDIS, start uint64, limit ...int64) ([]string, error) {
+func (r *RedisClient) GetAllBlobsNames(ctx context.Context, typeName DATA_REDIS, start uint64, limit ...int64) ([]*BlobName, error) {
 	var defaultLimit int64 = 20
 	if len(limit) > 1 {
 		defaultLimit = limit[0]
 	}
 
 	// really anything, they both share the same name lol
-	iter := r.Db.Scan(ctx, start, fmt.Sprintf("TYPE %s", typeName), defaultLimit).Iterator()
-	var keys []string
+	scan := r.Db.ScanType(ctx, start, "*", defaultLimit, string(typeName))
 
+	keys := []*BlobName{}
+	if err := scan.Err(); err != nil {
+		return keys, err
+	}
+
+	iter := scan.Iterator()
 	for iter.Next(ctx) {
 		if err := iter.Err(); err != nil {
 			return keys, err
 		}
 
 		val := iter.Val()
-		_, _, name := r.GetBlobFolderAndTitleFromIdentifier(val)
-		keys = append(keys, name)
+		if names, err := r.GetBlobFolderAndTitleFromIdentifier(val); err == nil {
+			keys = append(keys, names)
+		}
 
 	}
 

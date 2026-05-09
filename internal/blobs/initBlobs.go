@@ -2,12 +2,13 @@ package blobs
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"search_engine/internal/utils"
 )
@@ -40,9 +41,9 @@ func init() {
 }
 
 func LoadBlobsFromFolder() *BlobList {
-	var blobList BlobList
+	blobList := BlobList{}
 
-	blobFile, err2 := ReadBlobsFromLocalFolder(utils.INDEXER_WIKIPEDIA)
+	blobFile, err2 := blobList.ReadBlobsFromLocalFolder(utils.INDEXER_WIKIPEDIA)
 	if err2 != nil {
 		return &blobList
 	}
@@ -54,7 +55,7 @@ func LoadBlobsFromFolder() *BlobList {
 	return &blobList
 }
 
-func ReadBlobsFromLocalFolder(i utils.INDEXERS) ([]*Blob, error) {
+func (bl *BlobList) ReadBlobsFromLocalFolder(i utils.INDEXERS) ([]*Blob, error) {
 	var blobs []*Blob
 	err := filepath.WalkDir(filepath.Join(blobsFilePath, i.Indexer), func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -65,38 +66,56 @@ func ReadBlobsFromLocalFolder(i utils.INDEXERS) ([]*Blob, error) {
 			return nil
 		}
 
-		file, err := os.ReadFile(path)
+		log.Fatalln("PANIC PATH: ", path)
+		b, err := bl.ReadSpecificBlobFromLocalFolder(i, path)
 		if err != nil {
 			return err
 		}
-
-		// create blob
-		b := CreateBlob()
-		b.Folder = i.Indexer
-
-		// separate the header from the body
-		fileContent := bytes.SplitN(file, []byte("\r\n"), 1)
-		header := fileContent[0]
-		body := fileContent[1]
-
-		// we retrieve the header "metadata"
-		headerData := strings.Split(string(header), ",")
-		if len(headerData) != 4 {
-			return fmt.Errorf("header length should be 4, received %d", len(header))
-		}
-
-		b.Title = headerData[HeaderTitle]
-		b.Description = headerData[HeaderDescription]
-		b.URL = headerData[HeaderURL]
-
-		if dateTime, err := time.Parse(DateLayout, headerData[HeaderDatetime]); err == nil {
-			b.Datetime = dateTime
-		}
-
-		// lastly we stem its content
-		b.StemWords(string(body))
+		blobs = append(blobs, b)
 		return nil
 	})
 
 	return blobs, err
+}
+
+func (bl *BlobList) ReadSpecificBlobFromLocalFolder(i utils.INDEXERS, path string) (*Blob, error) {
+	file, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	// create blob
+	b := CreateBlob()
+	b.Folder = i.Indexer
+
+	// separate the header from the body
+	before, after, ok := bytes.Cut(file, []byte("\n"))
+	if !ok {
+		return nil, errors.New("there's no newlines in the file")
+	}
+
+	header := before
+	body := after
+
+	// we retrieve the header "metadata"
+	headerData := strings.Split(string(header), ",")
+	if len(headerData) != 4 {
+		return nil, fmt.Errorf("header length should be 4, received %d", len(header))
+	}
+
+	b.Title = headerData[HeaderTitle]
+	b.Description = headerData[HeaderDescription]
+	b.URL = headerData[HeaderURL]
+
+	b.Body = body
+	b.SetDateTime(headerData[HeaderDatetime])
+
+	// lastly we stem its content
+	b.StemWords(string(body))
+
+	return b, nil
+}
+
+func (bl *BlobList) GetBlobPath(i utils.INDEXERS, name string) string {
+	return filepath.Join(filepath.Join(blobsFilePath, i.Indexer, name))
 }

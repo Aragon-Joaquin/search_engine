@@ -65,8 +65,11 @@ func (cr *Crawler) CrawlIntoIndexer(term string) []*blobs.Blob {
 			b.Title = strings.ToLower(term)
 			b.Datetime = time.Now().UTC()
 			b.Folder = utils.INDEXER_WIKIPEDIA.Indexer
+			b.URL = h.Request.URL.RawPath
+			b.Body = markdown
 			b.StemWords(string(markdown))
 
+			// TODO: fix
 			if selector := h.DOM.Find("meta[property=\"description\"]"); selector != nil {
 				b.Description = selector.AttrOr("property", "Not found")
 			}

@@ -17,6 +17,8 @@ var INDEXER_WIKIPEDIA INDEXERS = INDEXERS{
 	SearchTerm: "/wiki",
 }
 
+var MIN_SCORE_THRESHOLD float64 = 0.05 // 5%
+
 func (i INDEXERS) Search(term string) string {
 	termEncoded := url.QueryEscape(term)
 	return fmt.Sprintf("https://%s/%s/%s", i.Indexer, i.SearchTerm, termEncoded)
