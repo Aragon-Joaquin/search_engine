@@ -116,7 +116,23 @@ func (m PTYModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, screen.Update(msg)
 }
 
-var showKeysLayout = lipgloss.NewStyle().Margin(0, 2).AlignVertical(lipgloss.Top).AlignHorizontal(lipgloss.Left).Height(3)
+var showKeysLayout = lipgloss.NewStyle().Margin(0, 1).AlignVertical(lipgloss.Top).AlignHorizontal(lipgloss.Left).Height(4).Border(softBorder).BorderForeground(lipgloss.BrightBlack)
+
+var softBorder = lipgloss.Border{
+	Top:          "-",
+	Bottom:       "-",
+	Left:         "∣",
+	Right:        "∣",
+	TopLeft:      "┌",
+	TopRight:     "┐",
+	BottomLeft:   "└",
+	BottomRight:  "┘",
+	MiddleLeft:   "∣",
+	MiddleRight:  "∣",
+	Middle:       "∣",
+	MiddleTop:    "-",
+	MiddleBottom: "-",
+}
 
 func (m PTYModel) View() tea.View {
 	if m.quitting {

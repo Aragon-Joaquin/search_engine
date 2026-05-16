@@ -2,6 +2,7 @@ package tools
 
 import (
 	"log"
+	"net/http"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -44,9 +45,13 @@ func (cr *Crawler) CrawlIntoIndexer(term string) []*blobs.Blob {
 	var wg sync.WaitGroup
 	var atomicConcurrent atomic.Int32
 
-	cr.c.OnHTML("body", func(h *colly.HTMLElement) {
+	cr.c.OnHTML(".mw-content-ltr", func(h *colly.HTMLElement) {
 		atomicConcurrent.Add(1)
 		wg.Go(func() {
+			if h.Response.StatusCode != http.StatusOK {
+				return
+			}
+
 			// parse the content
 			bodyNode := h.DOM.Nodes[h.Index]
 			if bodyNode == nil {
@@ -60,7 +65,6 @@ func (cr *Crawler) CrawlIntoIndexer(term string) []*blobs.Blob {
 
 			// send it to the channel
 			b := blobs.CreateBlob()
-			// pageTitle := h.ChildText(".mw-page-title-main") // wikipedia hardcodded
 
 			b.Title = strings.ToLower(term)
 			b.Datetime = time.Now().UTC()
@@ -72,6 +76,12 @@ func (cr *Crawler) CrawlIntoIndexer(term string) []*blobs.Blob {
 			// TODO: fix
 			if selector := h.DOM.Find("meta[property=\"description\"]"); selector != nil {
 				b.Description = selector.AttrOr("property", "Not found")
+			}
+
+			if selector := h.DOM.Find("meta[name='description']"); selector.Length() > 0 {
+				b.Description = selector.AttrOr("content", "Not found")
+			} else {
+				b.Description = "Not found"
 			}
 
 			if err := cr.rep.SaveBlob(b, utils.INDEXER_WIKIPEDIA, &markdown); err != nil {

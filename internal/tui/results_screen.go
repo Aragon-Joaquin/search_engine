@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"search_engine/internal/blobs"
 
@@ -43,7 +44,6 @@ func CreateResultsScreen(search_query string) (CurrentScreen, tea.Cmd) {
 		res := rep.UserMakeQuery(search_query)
 
 		if len(res) == 0 {
-			panic("DO NOT ENTER THE CRAWLER")
 			res = crw.CrawlIntoIndexer(search_query)
 		}
 
@@ -214,7 +214,6 @@ func (m *results_screen) View(w, h int) tea.View {
 	} else {
 		m.viewport.SetContent(itemListedRendered)
 		v.SetContent(fmt.Sprintf("%s\n%s\n%s", spin, m.headerView(), m.viewport.View()))
-
 	}
 
 	return v
@@ -256,7 +255,7 @@ func (m *results_screen) bodyView(w, _ int) []string {
 		formattedDate := i.Datetime.String()
 		headerTitleStr := headerTitle.
 			Width(list.GetWidth() - len(formattedDate) - (listMargin * 2)).
-			Render(i.Title)
+			Render(strings.ToUpper(i.Title))
 
 		headerDateStr := headerDate.Width(len(formattedDate)).Render(formattedDate)
 
