@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"search_engine/internal/utils"
+	"search_engine/internal/indexers"
 )
 
 var (
@@ -43,7 +43,7 @@ func init() {
 func LoadBlobsFromFolder() *BlobList {
 	blobList := BlobList{}
 
-	blobFile, err2 := blobList.ReadBlobsFromLocalFolder(utils.INDEXER_WIKIPEDIA)
+	blobFile, err2 := blobList.ReadBlobsFromLocalFolder(indexers.GetWikipediaIndexer())
 	if err2 != nil {
 		return &blobList
 	}
@@ -55,9 +55,9 @@ func LoadBlobsFromFolder() *BlobList {
 	return &blobList
 }
 
-func (bl *BlobList) ReadBlobsFromLocalFolder(i utils.INDEXERS) ([]*Blob, error) {
+func (bl *BlobList) ReadBlobsFromLocalFolder(i indexers.INDEXERS) ([]*Blob, error) {
 	var blobs []*Blob
-	err := filepath.WalkDir(filepath.Join(blobsFilePath, i.Indexer), func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(filepath.Join(blobsFilePath, i.GetIndexer()), func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -78,7 +78,7 @@ func (bl *BlobList) ReadBlobsFromLocalFolder(i utils.INDEXERS) ([]*Blob, error) 
 	return blobs, err
 }
 
-func (bl *BlobList) ReadSpecificBlobFromLocalFolder(i utils.INDEXERS, path string) (*Blob, error) {
+func (bl *BlobList) ReadSpecificBlobFromLocalFolder(i indexers.INDEXERS, path string) (*Blob, error) {
 	file, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func (bl *BlobList) ReadSpecificBlobFromLocalFolder(i utils.INDEXERS, path strin
 
 	// create blob
 	b := CreateBlob()
-	b.Folder = i.Indexer
+	b.Folder = i.GetIndexer()
 
 	// separate the header from the body
 	before, after, ok := bytes.Cut(file, []byte("\n"))
@@ -116,6 +116,6 @@ func (bl *BlobList) ReadSpecificBlobFromLocalFolder(i utils.INDEXERS, path strin
 	return b, nil
 }
 
-func (bl *BlobList) GetBlobPath(i utils.INDEXERS, name string) string {
-	return filepath.Join(filepath.Join(blobsFilePath, i.Indexer, name))
+func (bl *BlobList) GetBlobPath(i indexers.INDEXERS, name string) string {
+	return filepath.Join(filepath.Join(blobsFilePath, i.GetIndexer(), name))
 }

@@ -1,4 +1,4 @@
-package utils
+package indexers
 
 import (
 	"errors"
@@ -14,7 +14,21 @@ const (
 
 var err_empty_filename = errors.New("empty filname")
 
-func (i INDEXERS) CreateFile(filename string) (file *os.File, err error) {
+// generic for all toi
+func (i types_of_indexers) AppendToWorkingDirectory() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(dir, BLOBS_FOLDER, i.Indexer), nil
+}
+
+func (i types_of_indexers) GetIndexer() string {
+	return i.Indexer
+}
+
+func (i types_of_indexers) CreateFile(filename string) (file *os.File, err error) {
 	ffolder := i.Indexer
 	if ffolder == "" {
 		return nil, err_empty_filename
@@ -40,7 +54,7 @@ func (i INDEXERS) CreateFile(filename string) (file *os.File, err error) {
 	return file, err
 }
 
-func (i INDEXERS) FindFileName(filename string) (pathFound string, err error) {
+func (i types_of_indexers) FindFileName(filename string) (pathFound string, err error) {
 	if filename == "" {
 		return "", err_empty_filename
 	}

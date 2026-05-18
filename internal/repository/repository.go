@@ -5,7 +5,7 @@ import (
 
 	"search_engine/internal/blobs"
 	"search_engine/internal/db"
-	"search_engine/internal/utils"
+	"search_engine/internal/indexers"
 )
 
 type Repository struct {
@@ -18,21 +18,18 @@ func CreateRepository(db *db.RedisClient) *Repository {
 	}
 }
 
-func (r *Repository) UserMakeQuery(word string) []*blobs.Blob {
-	query := blobs.CreateBlob()
-	query.StemWords(word)
-
+func (r *Repository) UserMakeQuery(userQuery *blobs.Blob) (*blobs.BlobList, error) {
 	ctx := context.Background()
-	bList, err := r.db.FilterByTermInSpace(ctx, query)
+	bList, err := r.db.FilterByTermInSpace(ctx, userQuery)
 	if err != nil {
-		return []*blobs.Blob{}
+		return nil, err
 	}
 
-	return bList.Calculate_tf_idf(query)
+	return bList, nil
 }
 
 // both saves into the redisdb + local
-func (r *Repository) SaveBlob(b *blobs.Blob, i utils.INDEXERS, content *[]byte) error {
+func (r *Repository) SaveBlob(b *blobs.Blob, i indexers.INDEXERS, content *[]byte) error {
 	f, err := i.CreateFile(b.Title)
 	if err != nil {
 		return err

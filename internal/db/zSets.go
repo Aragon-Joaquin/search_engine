@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"search_engine/internal/blobs"
-	"search_engine/internal/utils"
+	"search_engine/internal/indexers"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -160,8 +160,8 @@ func (r *RedisClient) FilterByTermInSpace(ctx context.Context, blobTerm *blobs.B
 
 			// finding blobname in local folder
 			b, err := blobList.ReadSpecificBlobFromLocalFolder(
-				utils.INDEXER_WIKIPEDIA,
-				blobList.GetBlobPath(utils.INDEXER_WIKIPEDIA, blobName.Name),
+				indexers.GetWikipediaIndexer(),
+				blobList.GetBlobPath(indexers.GetWikipediaIndexer(), blobName.Name),
 			)
 			if err != nil {
 				return
@@ -177,7 +177,7 @@ func (r *RedisClient) FilterByTermInSpace(ctx context.Context, blobTerm *blobs.B
 			}
 
 			b.CalculateDotProduct(blobTerm)
-			if b.Score < utils.MIN_SCORE_THRESHOLD {
+			if b.Score < indexers.MIN_SCORE_THRESHOLD {
 				return
 			}
 

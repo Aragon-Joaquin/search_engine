@@ -9,6 +9,9 @@ type keyMap struct {
 	Quit   key.Binding
 	Select key.Binding
 
+	Left  key.Binding
+	Right key.Binding
+
 	Tab key.Binding
 }
 
@@ -21,6 +24,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down},
 		{k.Select, k.Quit},
+		{k.Left, k.Right},
 		{k.Tab},
 	}
 }
@@ -42,9 +46,16 @@ var initKeysMap = keyMap{
 		key.WithKeys("enter"),
 		key.WithHelp("enter", "select"),
 	),
+	Left: key.NewBinding(
+		key.WithKeys("left"),
+		key.WithHelp("←", "prev page"),
+	),
+	Right: key.NewBinding(
+		key.WithKeys("right"),
+		key.WithHelp("→", "next page"),
+	),
 	Tab: key.NewBinding(
 		key.WithKeys("tab"),
 		key.WithHelp("↹", "change focus"),
 	),
 }
-

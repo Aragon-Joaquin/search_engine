@@ -40,21 +40,28 @@ func CreateResultsScreen(search_query string) (CurrentScreen, tea.Cmd) {
 	bState.isLoading = true
 	bState.items = []*blobs.Blob{}
 
+	query := blobs.CreateBlob()
+	query.StemWords(search_query)
+
 	go func() {
-		res := rep.UserMakeQuery(search_query)
+		defer func() {
+			bState.isLoading = false
+		}()
 
-		if len(res) == 0 {
-			res = crw.CrawlIntoIndexer(search_query)
+		res := &blobs.BlobList{}
+		var err error
+
+		res, err = rep.UserMakeQuery(query)
+
+		if err != nil || len(res.Blobs) == 0 {
+			res, err = crw.CrawlIntoIndexer(search_query)
 		}
 
-		blobs := []*blobs.Blob{}
-
-		for _, b := range res {
-			blobs = append(blobs, b)
+		if res != nil && len(res.Blobs) > 0 {
+			bState.items = res.Calculate_tf_idf(query)
+			return
 		}
-
-		bState.isLoading = false
-		bState.items = blobs
+		bState.items = []*blobs.Blob{}
 	}()
 
 	ti := textinput.New()

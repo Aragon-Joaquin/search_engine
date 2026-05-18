@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"search_engine/internal/blobs"
+	"search_engine/internal/indexers"
 	"search_engine/internal/repository"
 	"search_engine/internal/utils"
 
@@ -16,19 +17,17 @@ import (
 	"github.com/gocolly/colly/v2"
 )
 
-const (
-	MAX_CONCURRENT_REQUESTS = 1
-)
-
 type Crawler struct {
 	c   *colly.Collector
 	rep *repository.Repository
 }
 
+var wikipedia = indexers.GetWikipediaIndexer()
+
 func InitCrawler(rep *repository.Repository) *Crawler {
 	c := colly.NewCollector(
 		colly.AllowedDomains(
-			utils.INDEXER_WIKIPEDIA.Indexer,
+			wikipedia.GetIndexer(),
 		),
 	)
 	c.DisableCookies()
@@ -38,10 +37,10 @@ func InitCrawler(rep *repository.Repository) *Crawler {
 }
 
 // crawls into webpages, saves them internally and return the results
-func (cr *Crawler) CrawlIntoIndexer(term string) []*blobs.Blob {
-	searchUrl := utils.INDEXER_WIKIPEDIA.Search(term)
+func (cr *Crawler) CrawlIntoIndexer(term string) (*blobs.BlobList, error) {
+	searchUrl := wikipedia.Search(term)
 
-	mdChan := make(chan *blobs.Blob, MAX_CONCURRENT_REQUESTS)
+	mdChan := make(chan *blobs.Blob, utils.MAX_CONCURRENT_REQUESTS)
 	var wg sync.WaitGroup
 	var atomicConcurrent atomic.Int32
 
@@ -68,7 +67,7 @@ func (cr *Crawler) CrawlIntoIndexer(term string) []*blobs.Blob {
 
 			b.Title = strings.ToLower(term)
 			b.Datetime = time.Now().UTC()
-			b.Folder = utils.INDEXER_WIKIPEDIA.Indexer
+			b.Folder = wikipedia.GetIndexer()
 			b.URL = h.Request.URL.RawPath
 			b.Body = markdown
 			b.StemWords(string(markdown))
@@ -84,7 +83,7 @@ func (cr *Crawler) CrawlIntoIndexer(term string) []*blobs.Blob {
 				b.Description = "Not found"
 			}
 
-			if err := cr.rep.SaveBlob(b, utils.INDEXER_WIKIPEDIA, &markdown); err != nil {
+			if err := cr.rep.SaveBlob(b, wikipedia, &markdown); err != nil {
 				return
 			}
 
@@ -104,7 +103,7 @@ func (cr *Crawler) CrawlIntoIndexer(term string) []*blobs.Blob {
 
 			// visit each one
 			for _, l := range parseableLinks {
-				if atomicConcurrent.Load() >= MAX_CONCURRENT_REQUESTS {
+				if atomicConcurrent.Load() >= utils.MAX_CONCURRENT_REQUESTS {
 					return
 				}
 				h.Request.Visit(l)
@@ -112,19 +111,19 @@ func (cr *Crawler) CrawlIntoIndexer(term string) []*blobs.Blob {
 		})
 	})
 
-	var results []*blobs.Blob
-
-	if err := cr.c.Visit(searchUrl); err != nil {
-		log.Printf("error while visiting %s: %s\n", searchUrl, err.Error())
-		return results
+	maxQ := min(len(searchUrl), utils.MAX_CONCURRENT_REQUESTS)
+	for _, s := range searchUrl[:maxQ] {
+		if err := cr.c.Visit(s); err != nil {
+			log.Printf("error while visiting %s: %s\n", searchUrl, err.Error())
+		}
 	}
-
 	wg.Wait()
 	close(mdChan)
 
+	bl := blobs.BlobList{}
 	for md := range mdChan {
-		results = append(results, md)
+		bl.AppendBlob(md)
 	}
 
-	return results
+	return &bl, nil
 }
