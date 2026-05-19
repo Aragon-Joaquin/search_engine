@@ -34,7 +34,7 @@ func (m *main_screen) Update(msg tea.Msg) tea.Cmd {
 		switch msg.String() {
 		case "enter":
 			value := strings.TrimSpace(m.textInput.Value())
-			if m.textInput.Value() != "" {
+			if len(value) > MAX_CHAR_REQUIRED {
 				return changeCurrentScreen(CreateResultsScreen(value))
 			}
 		}

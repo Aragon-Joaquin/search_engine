@@ -97,7 +97,7 @@ func (m *results_screen) Update(msg tea.Msg) tea.Cmd {
 		switch msg.String() {
 		case "enter":
 			if ok := m.searchInput.Focused(); ok {
-				if len(m.searchInput.Value()) > 3 {
+				if len(m.searchInput.Value()) > MAX_CHAR_REQUIRED {
 					return changeCurrentScreen(CreateResultsScreen(m.searchInput.Value()))
 				}
 			}

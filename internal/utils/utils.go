@@ -1,5 +1,5 @@
 package utils
 
 const (
-	MAX_CONCURRENT_REQUESTS = 1
+	MAX_CONCURRENT_REQUESTS = 10
 )

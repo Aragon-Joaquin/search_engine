@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	BLOBS_FOLDER = "/data"
+	BLOBS_FOLDER        string  = "/data"
+	MIN_SCORE_THRESHOLD float64 = 0.05 // 5%
 )
 
 var err_empty_filename = errors.New("empty filname")

@@ -11,6 +11,10 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
+const (
+	MAX_CHAR_REQUIRED = 1
+)
+
 func AssignColorToScore(s int) color.Color {
 	if s < 10 {
 		return lipgloss.BrightBlack

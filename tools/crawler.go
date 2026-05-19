@@ -3,9 +3,9 @@ package tools
 import (
 	"log"
 	"net/http"
+	"path"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"search_engine/internal/blobs"
@@ -29,6 +29,7 @@ func InitCrawler(rep *repository.Repository) *Crawler {
 		colly.AllowedDomains(
 			wikipedia.GetIndexer(),
 		),
+		colly.Async(true),
 	)
 	c.DisableCookies()
 	c.AllowURLRevisit = false
@@ -36,28 +37,36 @@ func InitCrawler(rep *repository.Repository) *Crawler {
 	return &Crawler{c, rep}
 }
 
+var searchUrl = map[string]*indexers.IndexerExtraInfo{}
+
 // crawls into webpages, saves them internally and return the results
 func (cr *Crawler) CrawlIntoIndexer(term string) (*blobs.BlobList, error) {
-	searchUrl := wikipedia.Search(term)
+	searchUrl = wikipedia.Search(term)
 
 	mdChan := make(chan *blobs.Blob, utils.MAX_CONCURRENT_REQUESTS)
 	var wg sync.WaitGroup
-	var atomicConcurrent atomic.Int32
 
 	cr.c.OnHTML(".mw-content-ltr", func(h *colly.HTMLElement) {
-		atomicConcurrent.Add(1)
 		wg.Go(func() {
 			if h.Response.StatusCode != http.StatusOK {
 				return
 			}
 
-			// parse the content
-			bodyNode := h.DOM.Nodes[h.Index]
-			if bodyNode == nil {
+			// match the blob -- needs to be improved though...
+			path := path.Base(h.Request.URL.Path)
+			info, ok := searchUrl[strings.ToLower(path)]
+			if !ok {
 				return
 			}
 
-			markdown, err := htmltomarkdown.ConvertNode(bodyNode)
+			log.Println("BLOB SEARCH: ", info.Title)
+
+			// parse the content
+			if len(h.DOM.Nodes) == 0 {
+				return
+			}
+
+			markdown, err := htmltomarkdown.ConvertNode(h.DOM.Get(0))
 			if err != nil {
 				return
 			}
@@ -65,7 +74,7 @@ func (cr *Crawler) CrawlIntoIndexer(term string) (*blobs.BlobList, error) {
 			// send it to the channel
 			b := blobs.CreateBlob()
 
-			b.Title = strings.ToLower(term)
+			b.Title = info.Title
 			b.Datetime = time.Now().UTC()
 			b.Folder = wikipedia.GetIndexer()
 			b.URL = h.Request.URL.RawPath
@@ -73,50 +82,41 @@ func (cr *Crawler) CrawlIntoIndexer(term string) (*blobs.BlobList, error) {
 			b.StemWords(string(markdown))
 
 			// TODO: fix
-			if selector := h.DOM.Find("meta[property=\"description\"]"); selector != nil {
-				b.Description = selector.AttrOr("property", "Not found")
-			}
+			if info.Description == "" {
+				if selector := h.DOM.Find("meta[property=\"description\"]"); selector != nil {
+					b.Description = selector.AttrOr("property", "Not found")
+				}
 
-			if selector := h.DOM.Find("meta[name='description']"); selector.Length() > 0 {
-				b.Description = selector.AttrOr("content", "Not found")
+				if selector := h.DOM.Find("meta[name='description']"); selector.Length() > 0 {
+					b.Description = selector.AttrOr("content", "Not found")
+				} else {
+					b.Description = "Not found"
+				}
 			} else {
-				b.Description = "Not found"
+				b.Description = info.Description
 			}
-
 			if err := cr.rep.SaveBlob(b, wikipedia, &markdown); err != nil {
 				return
 			}
 
 			mdChan <- b
-
-			// look for more content
-			var parseableLinks []string
-			for _, url := range h.ChildAttrs("a[href]", "a") {
-				res := h.Request.AbsoluteURL(url)
-
-				if res == "" {
-					continue
-				}
-
-				parseableLinks = append(parseableLinks, res)
-			}
-
-			// visit each one
-			for _, l := range parseableLinks {
-				if atomicConcurrent.Load() >= utils.MAX_CONCURRENT_REQUESTS {
-					return
-				}
-				h.Request.Visit(l)
-			}
 		})
 	})
 
-	maxQ := min(len(searchUrl), utils.MAX_CONCURRENT_REQUESTS)
-	for _, s := range searchUrl[:maxQ] {
-		if err := cr.c.Visit(s); err != nil {
-			log.Printf("error while visiting %s: %s\n", searchUrl, err.Error())
+	// WARN: THIS SHOULD NEVER EXCEED THE utils.MAX_CONCURRENT_REQUESTS. NEVER!!!
+	for _, v := range searchUrl {
+
+		// it should never happen. but whatever
+		if v == nil {
+			continue
+		}
+
+		if err := cr.c.Visit((*v).URL); err != nil {
+			log.Printf("error while visiting %s: %s\n", (*v).URL, err.Error())
 		}
 	}
+
+	cr.c.Wait() // maybe not...
 	wg.Wait()
 	close(mdChan)
 

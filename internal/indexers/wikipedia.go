@@ -2,6 +2,7 @@ package indexers
 
 import (
 	"fmt"
+	"strings"
 
 	"search_engine/internal/utils"
 )
@@ -11,10 +12,7 @@ var INDEXER_WIKIPEDIA = types_of_indexers{
 	SearchTerm: "/wiki",
 }
 
-var (
-	api_rest_json       string  = "https://en.wikipedia.org/w/rest.php/v1/search/page"
-	MIN_SCORE_THRESHOLD float64 = 0.05 // 5%
-)
+var api_rest_json string = "https://en.wikipedia.org/w/rest.php/v1/search/page"
 
 type wikipedia_json_response struct {
 	Pages []page `json:"pages"`
@@ -37,12 +35,12 @@ type page struct {
 	} `json:"thumbnail"`
 }
 
-func (i types_of_indexers) Search(term string) []string {
-	var jsonRes *wikipedia_json_response
-	results := []string{}
+func (i types_of_indexers) Search(term string) map[string]*IndexerExtraInfo {
+	jsonRes := &wikipedia_json_response{}
+	results := map[string]*IndexerExtraInfo{}
 
-	err := utils.HttpGet(fmt.Sprintf("%s?q=%s&limit=%d", api_rest_json, term, 10), jsonRes)
-	if err != nil || jsonRes == nil || jsonRes.Pages == nil {
+	err := utils.HttpGet(fmt.Sprintf("%s?q=%s&limit=%d", api_rest_json, term, utils.MAX_CONCURRENT_REQUESTS), jsonRes)
+	if err != nil {
 		return results
 	}
 
@@ -50,7 +48,21 @@ func (i types_of_indexers) Search(term string) []string {
 		if url.Key == "" {
 			continue
 		}
-		results = append(results, url.Key)
+
+		new_index_info := IndexerExtraInfo{
+			URL: fmt.Sprintf("https://%s%s/%s", i.Indexer, i.SearchTerm, url.Key),
+			Key: strings.ToLower(url.Key),
+		}
+
+		if url.Title != "" {
+			new_index_info.Title = url.Title
+		}
+
+		if url.Description != "" {
+			new_index_info.Description = url.Description
+		}
+
+		results[new_index_info.Key] = &new_index_info
 	}
 
 	return results
