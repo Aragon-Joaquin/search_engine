@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"log"
 
 	"search_engine/internal/repository"
@@ -45,6 +46,7 @@ func changeCurrentScreen(c CurrentScreen, cmd ...tea.Cmd) tea.Cmd {
 // needs to implement the tea.Model interface
 type PTYModel struct {
 	// internal state
+	isSmall  bool
 	quitting bool
 
 	// client info
@@ -60,6 +62,11 @@ type PTYModel struct {
 	help help.Model
 }
 
+const (
+	MIN_SCREEN_WIDTH  = 96
+	MIN_SCREEN_HEIGHT = 30
+)
+
 // TODO: uhm...is there a better way?
 var (
 	rep *repository.Repository
@@ -74,6 +81,7 @@ func CreatePTYModel(r *repository.Repository, c *tools.Crawler, w, h int, t stri
 	helpKeys.ShowAll = true
 
 	pty := PTYModel{
+		isSmall:  false,
 		quitting: false,
 
 		width:  w,
@@ -93,6 +101,26 @@ func (m PTYModel) Init() tea.Cmd {
 	)
 }
 
+var (
+	min_size_screen_warn = lipgloss.NewStyle().Align(lipgloss.Center, lipgloss.Center)
+	min_text_title       = lipgloss.NewStyle().
+				Align(lipgloss.Center).
+				Bold(true).
+				Underline(true).
+				Foreground(lipgloss.Yellow).
+				Render("Screen is too small!")
+	min_text_description = lipgloss.NewStyle().
+				Align(lipgloss.Center).
+				Bold(true).
+				Render(fmt.Sprintf("Minimum size: %dw x %dh", MIN_SCREEN_WIDTH, MIN_SCREEN_HEIGHT))
+
+	min_paragraph = lipgloss.JoinVertical(lipgloss.Center,
+		min_text_title,
+		"\n",
+		min_text_description,
+	)
+)
+
 func (m PTYModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// i dont know how to clear the screen on exit
 	// without copying and pasting this everywhere
@@ -107,6 +135,11 @@ func (m PTYModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		if m.height <= MIN_SCREEN_HEIGHT && m.width <= MIN_SCREEN_WIDTH {
+			m.isSmall = true
+		} else {
+			m.isSmall = false
+		}
 		log.Println("WIDTH: ", msg.Width, " HEIGHT: ", msg.Height)
 
 	default:
@@ -137,6 +170,10 @@ var softBorder = lipgloss.Border{
 func (m PTYModel) View() tea.View {
 	if m.quitting {
 		return tea.NewView("\n")
+	}
+
+	if m.isSmall {
+		return tea.NewView(min_size_screen_warn.Width(m.width).Height(m.height).Render(min_paragraph))
 	}
 
 	content := screen.View(m.width, m.height)

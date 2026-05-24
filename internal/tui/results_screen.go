@@ -69,24 +69,26 @@ func CreateResultsScreen(search_query string) (CurrentScreen, tea.Cmd) {
 	ti.SetVirtualCursor(false)
 	ti.Focus()
 	ti.CharLimit = 40
-	ti.SetWidth(120)
+	ti.SetWidth(40)
 
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 
+	vi := viewport.New()
 	return &results_screen{
 		queryMade: search_query,
 
 		searchInput: ti,
-		viewport:    viewport.New(),
+		viewport:    vi,
 
 		spinner: s,
 	}, s.Tick
 }
 
 var (
-	CURRENT_SELECTOR        int = 0
-	HEADER_FOCUSEABLE_ITEMS int = 1
+	CURRENT_SELECTOR        int     = 0
+	HEADER_FOCUSEABLE_ITEMS int     = 1
+	SCROLL_PERCENTAGE       float64 = 0.90
 )
 
 func (m *results_screen) Update(msg tea.Msg) tea.Cmd {
@@ -112,12 +114,22 @@ func (m *results_screen) Update(msg tea.Msg) tea.Cmd {
 
 		case "down":
 			if CURRENT_SELECTOR+1 < len(bState.items)+HEADER_FOCUSEABLE_ITEMS {
-				CURRENT_SELECTOR = CURRENT_SELECTOR + 1
+				CURRENT_SELECTOR += 1
+
+				if m.GetScrollNeeded() > m.viewport.YOffset()+m.viewport.Height() {
+					m.viewport.ScrollDown(m.viewport.Height())
+				}
+
 			}
 
 		case "up":
 			if CURRENT_SELECTOR-1 >= 0 {
-				CURRENT_SELECTOR = CURRENT_SELECTOR - 1
+				CURRENT_SELECTOR -= 1
+
+				if m.GetScrollNeeded() < m.viewport.YOffset() {
+					m.viewport.ScrollUp(m.viewport.Height())
+				}
+
 			}
 
 		case "q":
@@ -126,7 +138,7 @@ func (m *results_screen) Update(msg tea.Msg) tea.Cmd {
 			}
 		}
 	case tea.WindowSizeMsg:
-		headerHeight := lipgloss.Height(m.headerView())
+		headerHeight := lipgloss.Height(m.headerView(msg.Width))
 		if !m.ready {
 			m.viewport = viewport.New(viewport.WithWidth(msg.Width), viewport.WithHeight(msg.Height-headerHeight))
 			m.viewport.YPosition = headerHeight
@@ -140,8 +152,8 @@ func (m *results_screen) Update(msg tea.Msg) tea.Cmd {
 	}
 
 	var cmd tea.Cmd
-	m.viewport, cmd = m.viewport.Update(msg)
-	cmds = append(cmds, cmd)
+	// m.viewport, cmd = m.viewport.Update(msg)
+	// cmds = append(cmds, cmd)
 
 	m.searchInput, cmd = m.searchInput.Update(msg)
 	cmds = append(cmds, cmd)
@@ -156,40 +168,59 @@ func (m *results_screen) Update(msg tea.Msg) tea.Cmd {
 
 var (
 	// general
-	list = lipgloss.NewStyle().
-		Align(lipgloss.Center).
-		Border(lipgloss.RoundedBorder(), true).
-		Padding(0, 2).
-		MaxWidth(150)
+
+	listMargin int = MARGIN_SIDES * 2
+	list           = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder(), true).
+			Padding(0, 1).
+			Margin(1, listMargin).
+			MaxWidth(150).
+			MaxHeight(descriptionMaxHeight + infoUrlMaxHeight + headerMaxHeight + 2 + (listMargin * 2)) // 2 for padding
 
 	// header
-	headerTitle = lipgloss.NewStyle().
+	headerMaxHeight int = 2
+	headerTitle         = lipgloss.NewStyle().
 			AlignHorizontal(lipgloss.Left).
-			Bold(true)
+			Bold(true).
+			MaxHeight(headerMaxHeight)
 
 	headerDate = lipgloss.NewStyle().
-			AlignHorizontal(lipgloss.Right).
-			Foreground(lipgloss.BrightBlack)
+			AlignHorizontal(lipgloss.Left).
+			Foreground(lipgloss.BrightBlack).
+			MaxHeight(headerMaxHeight)
 
-	header = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), false, false, true, false).BorderForeground(lipgloss.Color("#444"))
+	header = lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder(), false, false, true, false).BorderForeground(lipgloss.Color("#444")).
+		MaxHeight(headerMaxHeight)
 
 	// info card
-	infoUrl = lipgloss.NewStyle().
-		AlignHorizontal(lipgloss.Left).
-		Foreground(lipgloss.Blue).
-		Underline(true)
+	infoUrlMaxHeight int = 1
+	infoUrl              = lipgloss.NewStyle().
+				AlignHorizontal(lipgloss.Left).
+				Foreground(lipgloss.Blue).
+				Underline(true).
+				MaxHeight(infoUrlMaxHeight)
 
 	infoScore = lipgloss.NewStyle().
-			AlignHorizontal(lipgloss.Right)
+			AlignHorizontal(lipgloss.Right).
+			MaxHeight(infoUrlMaxHeight)
 
 	// description
-	bottomDescription = lipgloss.NewStyle().
+	descriptionMaxHeight int = 2
+	bottomDescription        = lipgloss.NewStyle().
 				PaddingTop(1).
 				Align(lipgloss.Left).
-				MaxHeight(2)
+				MaxHeight(descriptionMaxHeight)
 
 	// extras
 	noItems = lipgloss.NewStyle().Italic(true).Bold(true).MarginTop(4).Align(lipgloss.Center)
+
+	// center sections
+	centerContainer = lipgloss.NewStyle().
+			Align(lipgloss.Center, lipgloss.Top)
+
+	viewportItemsCenter = lipgloss.NewStyle().
+				Align(lipgloss.Center, lipgloss.Top)
 )
 
 func (m *results_screen) View(w, h int) tea.View {
@@ -210,34 +241,49 @@ func (m *results_screen) View(w, h int) tea.View {
 		itemsListed...,
 	)
 
-	spin := ""
-	if bState.isLoading {
-		spin = fmt.Sprintf("\n\n%s Loading forever...press q to quit\n\n", m.spinner.View())
-	}
-
 	var v tea.View
 	if !m.ready {
 		v.SetContent("\n  Initializing...")
 	} else {
-		m.viewport.SetContent(itemListedRendered)
-		v.SetContent(fmt.Sprintf("%s\n%s\n%s", spin, m.headerView(), m.viewport.View()))
+
+		m.viewport.SetContent(
+			viewportItemsCenter.Width(w).Height(h).Render(itemListedRendered),
+		)
+
+		cc := lipgloss.NewStyle().Width(w)
+		var container string = ""
+
+		if bState.isLoading {
+			spin := fmt.Sprintf("\n\n%s Loading forever...press q to quit\n\n", m.spinner.View())
+			container = cc.Render(spin)
+		} else {
+			container = cc.Render(
+				lipgloss.JoinVertical(
+					lipgloss.Center,
+					m.headerView(w), m.viewport.View(),
+				),
+			)
+		}
+
+		v.SetContent(container)
 	}
 
 	return v
 }
 
-var titleSearch = lipgloss.NewStyle().Padding(0, 1).Margin(0, MARGIN_SIDES).Border(lipgloss.RoundedBorder(), true).BorderForeground(lipgloss.BrightBlack)
+var titleSearch = lipgloss.NewStyle().Padding(0, 2).Margin(0, 20).Border(lipgloss.RoundedBorder(), true).BorderForeground(lipgloss.BrightBlack).AlignHorizontal(lipgloss.Left)
 
-func (m *results_screen) headerView() string {
+func (m *results_screen) headerView(w int) string {
+	search := titleSearch.Width(w - 40) // 20 margin * 2 = 40
 	if CURRENT_SELECTOR < HEADER_FOCUSEABLE_ITEMS {
-		titleSearch = titleSearch.Border(lipgloss.DoubleBorder(), true).BorderForeground(lipgloss.Yellow)
+		search = search.Border(lipgloss.DoubleBorder(), true).BorderForeground(lipgloss.Yellow)
 		m.searchInput.Focus()
 	} else {
 		m.searchInput.Blur()
 	}
 
 	if !bState.isLoading {
-		return lipgloss.JoinHorizontal(lipgloss.Center, titleSearch.Render(m.searchInput.View()))
+		return search.Render(m.searchInput.View())
 	}
 
 	return ""
@@ -248,23 +294,31 @@ func (m *results_screen) bodyView(w, _ int) []string {
 	for index, i := range bState.items {
 		scoreParsed := int(i.Score * 100)
 
-		listMargin := MARGIN_SIDES * 2
 		list = list.
 			BorderForeground(lipgloss.Red).
-			Margin(1, listMargin).
-			Width(w - (listMargin * 2))
+			Width(w - listMargin*2)
 
 		if CURRENT_SELECTOR >= HEADER_FOCUSEABLE_ITEMS-1 && index == (CURRENT_SELECTOR-HEADER_FOCUSEABLE_ITEMS) {
 			list = list.Border(lipgloss.DoubleBorder(), true).BorderForeground(lipgloss.BrightYellow)
+		} else {
+			list = list.Border(lipgloss.NormalBorder(), true)
 		}
 
 		// NOTE: header card (title + date)
 		formattedDate := i.Datetime.String()
+		titleUpper := strings.ToUpper(i.Title)
 		headerTitleStr := headerTitle.
 			Width(list.GetWidth() - len(formattedDate) - (listMargin * 2)).
-			Render(strings.ToUpper(i.Title))
+			Render(titleUpper)
 
-		headerDateStr := headerDate.Width(len(formattedDate)).Render(formattedDate)
+		headerDateStr := headerDate.Render(formattedDate)
+
+		var headerStr lipgloss.Style = header
+		if strings.Contains(titleUpper, "DISAMBIGUATION") == true {
+			header = headerStr.Background(lipgloss.Red)
+		} else {
+			headerStr = headerStr.UnsetBackground()
+		}
 
 		// NOTE: information card (url, + score)
 		scoreToStr := strconv.Itoa(scoreParsed) + "% Match"
@@ -282,16 +336,14 @@ func (m *results_screen) bodyView(w, _ int) []string {
 		informationCard := lipgloss.NewStyle().Render(infoUrlStr, infoScoreStr)
 
 		// NOTE: description (bottom)
-		bottomDescriptionStr := bottomDescription.
-			MaxWidth(list.GetWidth() - listMargin*2).
-			Render(i.Description)
+		bottomDescriptionStr := bottomDescription.Width(list.GetWidth()).Render(i.Description)
 
 		// united all
 		itemsListed = append(itemsListed,
 			list.Render(
 				lipgloss.JoinVertical(
 					lipgloss.Left,
-					header.Render(headerTitleStr, headerDateStr),
+					headerStr.Render(headerTitleStr, headerDateStr),
 					informationCard,
 					bottomDescriptionStr,
 				),
@@ -299,4 +351,8 @@ func (m *results_screen) bodyView(w, _ int) []string {
 		)
 	}
 	return itemsListed
+}
+
+func (_ results_screen) GetScrollNeeded() int {
+	return CURRENT_SELECTOR * ((list.GetHeight() * 2) + (listMargin * 2) + 2) // 2 for the padding
 }
