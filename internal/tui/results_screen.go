@@ -166,6 +166,10 @@ func (m *results_screen) Update(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
+const (
+	MAX_WIDTH_LIST = 150
+)
+
 var (
 	// general
 
@@ -174,7 +178,7 @@ var (
 			Border(lipgloss.RoundedBorder(), true).
 			Padding(0, 1).
 			Margin(1, listMargin).
-			MaxWidth(150).
+			MaxWidth(MAX_WIDTH_LIST).
 			MaxHeight(descriptionMaxHeight + infoUrlMaxHeight + headerMaxHeight + 2 + (listMargin * 2)) // 2 for padding
 
 	// header
@@ -296,7 +300,7 @@ func (m *results_screen) bodyView(w, _ int) []string {
 
 		list = list.
 			BorderForeground(lipgloss.Red).
-			Width(w - listMargin*2)
+			Width(min(w-listMargin*2, MAX_WIDTH_LIST-4))
 
 		if CURRENT_SELECTOR >= HEADER_FOCUSEABLE_ITEMS-1 && index == (CURRENT_SELECTOR-HEADER_FOCUSEABLE_ITEMS) {
 			list = list.Border(lipgloss.DoubleBorder(), true).BorderForeground(lipgloss.BrightYellow)
