@@ -5,6 +5,7 @@ go 1.25.8
 require (
 	charm.land/bubbles/v2 v2.0.0
 	charm.land/bubbletea/v2 v2.0.2
+	charm.land/glamour/v2 v2.0.0
 	charm.land/lipgloss/v2 v2.0.2
 	charm.land/wish/v2 v2.0.0
 	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.0
@@ -16,7 +17,6 @@ require (
 )
 
 require (
-	charm.land/glamour/v2 v2.0.0 // indirect
 	charm.land/log/v2 v2.0.0 // indirect
 	github.com/JohannesKaufmann/dom v0.2.0 // indirect
 	github.com/PuerkitoBio/goquery v1.11.0 // indirect
