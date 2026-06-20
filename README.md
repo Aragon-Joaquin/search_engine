@@ -2,7 +2,7 @@
 
 It uses Wikipedia as indexer, then it scrapes the web pages, ranks them, saves them into redis and tada! It gets rendered out in the client which is really a ssh server. Cool!
 
-[!miniature](./.github/argon.png)
+![preview](./.github/argon.png)
 
 #### usage?
 
