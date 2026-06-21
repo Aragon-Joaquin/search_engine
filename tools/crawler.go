@@ -44,7 +44,7 @@ func (cr *Crawler) CrawlIntoIndexer(term string) (*blobs.BlobList, error) {
 	searchUrl = wikipedia.Search(term)
 
 	mdChan := make(chan *blobs.Blob, utils.MAX_CONCURRENT_REQUESTS)
-	var wg sync.WaitGroup
+	var wg = sync.WaitGroup{}
 
 	cr.c.OnHTML(".mw-content-ltr", func(h *colly.HTMLElement) {
 		wg.Go(func() {

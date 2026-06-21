@@ -74,22 +74,28 @@ var (
 		MarginBottom(1)
 
 	description = lipgloss.NewStyle().
-			AlignHorizontal(lipgloss.Left).
+			PaddingBottom(8).
+			AlignHorizontal(lipgloss.Center).
 			AlignVertical(lipgloss.Top)
 
-	pageHelper = lipgloss.NewStyle().Align(lipgloss.Center).Foreground(lipgloss.Red).Bold(true).Height(2)
+	pageHelper = lipgloss.NewStyle().
+			Align(lipgloss.Center).
+			Foreground(lipgloss.Red).
+			Bold(true).
+			Height(2)
 )
 
 func (m *blobinfo_screen) View(w, h int) tea.View {
 	marginWidth := int(float64(w) / 1.3)
 	// body header
-	titleStr := title.Width(marginWidth).Render(strings.ToUpper(m.blob.Title))
+	titleStr := title.MaxWidth(MAX_WIDTH_LIST).Width(marginWidth).Render(strings.ToUpper(m.blob.Title))
 	titleStr = lipgloss.Place(w, 0, lipgloss.Center, lipgloss.Center, titleStr)
 
 	// body body
 	d := description_state.getDescriptionText(m.blob)
-	descriptionStr := description.Width(marginWidth + 8).PaddingBottom(8).Render(d)
-	descriptioSub := m.createSubtitle("Description", marginWidth+8)
+
+	descriptioSub := m.createSubtitle("Description", marginWidth)
+	descriptionStr := description.Render(d)
 
 	var navPage string
 	if description_state.index < description_state.getPagesLength() {
@@ -98,17 +104,15 @@ func (m *blobinfo_screen) View(w, h int) tea.View {
 		navPage = pageHelper.Width(w).Render("END OF CONTENT")
 	}
 
-	descriptionStr = lipgloss.
-		Place(w, h, lipgloss.Center, lipgloss.Top,
-			fmt.Sprintf("%s\n%s", descriptioSub, descriptionStr),
-		)
-
 	m.viewport.SetContent(
 		lipgloss.JoinVertical(
 			lipgloss.Left,
 			titleStr,
 			navPage,
-			descriptionStr,
+			lipgloss.
+				Place(w, h, lipgloss.Center, lipgloss.Top,
+					fmt.Sprintf("%s\n%s", descriptioSub, descriptionStr),
+				),
 		),
 	)
 
@@ -171,5 +175,5 @@ func (m *blobinfo_screen) headerView(_, w int) string {
 var subtitle = lipgloss.NewStyle().Foreground(lipgloss.Magenta).Bold(true).MarginBottom(1)
 
 func (m *blobinfo_screen) createSubtitle(titlename string, w int) string {
-	return subtitle.Width(w).Render(fmt.Sprintf("## %s", titlename))
+	return subtitle.Width(w).MaxWidth(MAX_WIDTH_LIST).AlignHorizontal(lipgloss.Left).Render(fmt.Sprintf("## %s", titlename))
 }

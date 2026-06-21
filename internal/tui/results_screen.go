@@ -57,7 +57,7 @@ func CreateResultsScreen(search_query string) (CurrentScreen, tea.Cmd) {
 			res, err = crw.CrawlIntoIndexer(search_query)
 		}
 
-		if res != nil && len(res.Blobs) > 0 {
+		if err == nil && len(res.Blobs) > 0 {
 			bState.items = res.Calculate_tf_idf(query)
 			return
 		}

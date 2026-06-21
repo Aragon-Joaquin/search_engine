@@ -45,7 +45,7 @@ type HANDLE_DESCRIPTION struct {
 	index       int // points to page. renders x/2 chars after and x/2 chars before itself
 }
 
-var max_lines_per_page = 100
+var max_lines_per_page = 50
 
 func (h *HANDLE_DESCRIPTION) returnPage() string {
 	if h.index > h.getPagesLength() {
