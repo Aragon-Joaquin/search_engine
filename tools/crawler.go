@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"path"
 	"strings"
-	"sync"
 	"time"
 
 	"search_engine/internal/blobs"
@@ -44,63 +43,60 @@ func (cr *Crawler) CrawlIntoIndexer(term string) (*blobs.BlobList, error) {
 	searchUrl = wikipedia.Search(term)
 
 	mdChan := make(chan *blobs.Blob, utils.MAX_CONCURRENT_REQUESTS)
-	var wg = sync.WaitGroup{}
 
 	cr.c.OnHTML(".mw-content-ltr", func(h *colly.HTMLElement) {
-		wg.Go(func() {
-			if h.Response.StatusCode != http.StatusOK {
-				return
+		if h.Response.StatusCode != http.StatusOK {
+			return
+		}
+
+		// match the blob -- needs to be improved though...
+		path := path.Base(h.Request.URL.Path)
+		info, ok := searchUrl[strings.ToLower(path)]
+		if !ok {
+			return
+		}
+
+		log.Println("BLOB SEARCH: ", info.Title)
+
+		// parse the content
+		if len(h.DOM.Nodes) == 0 {
+			return
+		}
+
+		markdown, err := htmltomarkdown.ConvertNode(h.DOM.Get(0))
+		if err != nil {
+			return
+		}
+
+		// send it to the channel
+		b := blobs.CreateBlob()
+
+		b.Title = info.Title
+		b.Datetime = time.Now().UTC()
+		b.Folder = wikipedia.GetIndexer()
+		b.URL = h.Request.URL.RawPath
+		b.Body = markdown
+		b.StemWords(string(markdown))
+
+		// TODO: fix
+		if info.Description == "" {
+			if selector := h.DOM.Find("meta[property=\"description\"]"); selector != nil {
+				b.Description = selector.AttrOr("property", "Not found")
 			}
 
-			// match the blob -- needs to be improved though...
-			path := path.Base(h.Request.URL.Path)
-			info, ok := searchUrl[strings.ToLower(path)]
-			if !ok {
-				return
-			}
-
-			log.Println("BLOB SEARCH: ", info.Title)
-
-			// parse the content
-			if len(h.DOM.Nodes) == 0 {
-				return
-			}
-
-			markdown, err := htmltomarkdown.ConvertNode(h.DOM.Get(0))
-			if err != nil {
-				return
-			}
-
-			// send it to the channel
-			b := blobs.CreateBlob()
-
-			b.Title = info.Title
-			b.Datetime = time.Now().UTC()
-			b.Folder = wikipedia.GetIndexer()
-			b.URL = h.Request.URL.RawPath
-			b.Body = markdown
-			b.StemWords(string(markdown))
-
-			// TODO: fix
-			if info.Description == "" {
-				if selector := h.DOM.Find("meta[property=\"description\"]"); selector != nil {
-					b.Description = selector.AttrOr("property", "Not found")
-				}
-
-				if selector := h.DOM.Find("meta[name='description']"); selector.Length() > 0 {
-					b.Description = selector.AttrOr("content", "Not found")
-				} else {
-					b.Description = "Not found"
-				}
+			if selector := h.DOM.Find("meta[name='description']"); selector.Length() > 0 {
+				b.Description = selector.AttrOr("content", "Not found")
 			} else {
-				b.Description = info.Description
+				b.Description = "Not found"
 			}
-			if err := cr.rep.SaveBlob(b, wikipedia, &markdown); err != nil {
-				return
-			}
+		} else {
+			b.Description = info.Description
+		}
+		if err := cr.rep.SaveBlob(b, wikipedia, &markdown); err != nil {
+			return
+		}
 
-			mdChan <- b
-		})
+		mdChan <- b
 	})
 
 	// WARN: THIS SHOULD NEVER EXCEED THE utils.MAX_CONCURRENT_REQUESTS. NEVER!!!
@@ -116,8 +112,7 @@ func (cr *Crawler) CrawlIntoIndexer(term string) (*blobs.BlobList, error) {
 		}
 	}
 
-	cr.c.Wait() // maybe not...
-	wg.Wait()
+	cr.c.Wait()
 	close(mdChan)
 
 	bl := blobs.BlobList{}

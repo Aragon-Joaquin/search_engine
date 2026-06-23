@@ -247,30 +247,29 @@ func (m *results_screen) View(w, h int) tea.View {
 
 	var v tea.View
 	if !m.ready {
-		v.SetContent("\n  Initializing...")
-	} else {
-
-		m.viewport.SetContent(
-			viewportItemsCenter.Width(w).Height(h).Render(itemListedRendered),
-		)
-
-		cc := lipgloss.NewStyle().Width(w)
-		var container string = ""
-
-		if bState.isLoading {
-			spin := fmt.Sprintf("\n\n%s Loading forever...press q to quit\n\n", m.spinner.View())
-			container = cc.Render(spin)
-		} else {
-			container = cc.Render(
-				lipgloss.JoinVertical(
-					lipgloss.Center,
-					m.headerView(w), m.viewport.View(),
-				),
-			)
-		}
-
-		v.SetContent(container)
+		return v
 	}
+
+	m.viewport.SetContent(
+		viewportItemsCenter.Width(w).Height(h).Render(itemListedRendered),
+	)
+
+	cc := lipgloss.NewStyle().Width(w)
+	var container string = ""
+
+	if bState.isLoading {
+		spin := fmt.Sprintf("\n\n%s Loading... press q to quit\n\n", m.spinner.View())
+		container = cc.Height(h).Align(lipgloss.Center, lipgloss.Center).Render(spin)
+	} else {
+		container = cc.Render(
+			lipgloss.JoinVertical(
+				lipgloss.Center,
+				m.headerView(w), m.viewport.View(),
+			),
+		)
+	}
+
+	v.SetContent(container)
 
 	return v
 }

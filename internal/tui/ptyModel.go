@@ -23,7 +23,6 @@ var (
   / ___ \| | | (_| | (_) | | | | 
  /_/   \_\_|  \__, |\___/|_| |_| 
               |___/              `
-
 	VERSION      = utils.GetEnv(utils.ENV_VER)
 	MARGIN_SIDES = 2
 )
@@ -141,6 +140,10 @@ func (m PTYModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.isSmall = false
 		}
 		log.Println("WIDTH: ", msg.Width, " HEIGHT: ", msg.Height)
+		//TODO: screen gets overwritten on WindowSize event
+		// i think the cause of this is the pattern im using
+
+		return m, tea.Sequence(tea.ClearScreen, screen.Update(msg))
 
 	default:
 		log.Printf("UNKNOWN: %#v\n", msg)
